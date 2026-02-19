@@ -1,0 +1,75 @@
+databases:
+  - name: camp_db
+    databaseName: camp_medical_db
+    user: camp_user
+    plan: free # قم بترقيتها لـ Starter للإنتاج
+
+services:
+  # 1. خدمة الويب (Web Service)
+  - type: web
+    name: camp-web
+    env: docker
+    plan: free # قم بترقيتها للإنتاج
+    dockerfilePath: ./docker/local/django/Dockerfile
+    dockerContext: .
+    startCommand: /start.sh
+    envVars:
+      - key: RENDER
+        value: true
+      - key: DJANGO_SETTINGS_MODULE
+        value: config.settings
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        fromDatabase:
+          name: camp_db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: camp-redis
+          property: connectionString
+      # أضف مفاتيح Azure هنا يدوياً في لوحة التحكم أو هنا إذا لم تكن سرية جداً
+      # لكن الأفضل إضافتها عبر Render Dashboard -> Environment Variables
+      
+  # 2. خدمة المهام (Celery Worker)
+  - type: worker
+    name: camp-worker
+    env: docker
+    dockerfilePath: ./docker/local/django/Dockerfile
+    dockerContext: .
+    startCommand: celery -A config worker --loglevel=info
+    envVars:
+      - key: RENDER
+        value: true
+      - key: DATABASE_URL
+        fromDatabase:
+          name: camp_db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: camp-redis
+          property: connectionString
+
+  # 3. خدمة الجدولة (Celery Beat) - اختياري
+  - type: worker
+    name: camp-beat
+    env: docker
+    dockerfilePath: ./docker/local/django/Dockerfile
+    dockerContext: .
+    startCommand: celery -A config beat -l info
+    envVars:
+      - key: RENDER
+        value: true
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: camp-redis
+          property: connectionString
+
+  # 4. خدمة Redis
+  - type: redis
+    name: camp-redis
+    plan: free # انتبه: النسخة المجانية لا تحفظ البيانات عند إعادة التشغيل
+    ipAllowList: [] # الوصول داخلي فقط
