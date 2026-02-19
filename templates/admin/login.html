@@ -1,0 +1,72 @@
+{% extends 'unfold/layouts/base_simple.html' %}
+{% load i18n static %}
+
+
+
+{% block content %}
+<link rel="stylesheet" href="{% static 'css/admin_login.css' %}">
+<div class="login-container">
+
+    <!-- العنوان -->
+    <div class="login-header">
+        <h2>Welcome Back To</h2>
+        <h1>{{ site_title }}</h1>
+    </div>
+
+    <!-- الكارت -->
+    <div class="login-card">
+        <form action="{{ app_path }}" method="post">
+            {% csrf_token %}
+
+            <!-- رسائل الخطأ -->
+            {% if form.errors %}
+                <div class="error-box">
+                    Username or password is incorrect.
+                </div>
+            {% endif %}
+
+            <!-- Username -->
+            <div class="form-group">
+                <label for="id_username" class="form-label">
+                    Username / Health ID
+                </label>
+                <input id="id_username" name="username" type="text" autocomplete="username" required 
+                       class="form-input" placeholder="Enter your ID">
+            </div>
+
+            <!-- Password -->
+            <div class="form-group">
+                <label for="id_password" class="form-label">
+                    Password
+                </label>
+                <input id="id_password" name="password" type="password" autocomplete="current-password" required 
+                       class="form-input" placeholder="Enter your password">
+            </div>
+
+                    <!-- Remember Me Checkbox -->
+<div class="flex items-center justify-between mb-4">
+    <div class="flex items-center">
+        <input id="remember_me" name="remember_me" type="checkbox" 
+               class="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-600">
+        <label for="remember_me" class="ml-2 block text-sm text-gray-900 dark:text-gray-300">
+            Remember me  
+        </label>
+    </div>
+</div>
+
+            <!-- Button -->
+            <button type="submit" class="login-btn">
+                Log in
+            </button>
+            
+            <!-- Forgot Password -->
+            <div class="login-footer">
+                <a href="{% url 'password_reset' %}" class="forgot-link">
+                    Glemt passord? / Forgot password?
+                </a>
+            </div>
+
+        </form>
+    </div>
+</div>
+{% endblock %}

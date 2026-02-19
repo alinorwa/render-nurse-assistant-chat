@@ -1,0 +1,9 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="card" style="text-align: center; color: #666;">
+    <h1>⚠️ No connection</h1>
+    <p>It appears the internet has gone down.</p>
+    <p>You can review your old messages, but you won't receive new ones until your connection is restored.</p>
+    <button onclick="window.location.reload()" class="btn-primary">Try again</button>
+</div>
+{% endblock %}

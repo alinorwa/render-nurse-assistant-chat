@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+
+{% block title %}Home{% endblock %}
+
+{% block content %}
+<div class="card" style="text-align: center;">
+    
+    <h3>Hi , {{ user.full_name }}</h3>
+    <p style="color: #666; margin-bottom: 20px;">
+        Health ID: {{ user.username }} <br>
+        Language: {{ user.get_native_language_display }}
+    </p>
+
+    <!-- زر الشات الكبير (سنقوم ببرمجته لاحقاً) -->
+   <a href="{% url 'chat_room' %}" class="btn-primary" style="display: block; text-decoration: none; background-color: #28a745;">
+        💬 بدء محادثة مع الممرض
+    </a>
+   
+
+    <hr style="margin: 20px 0; border: 0; border-top: 1px solid #eee;">
+
+    <!-- زر تسجيل الخروج -->
+    <form action="{% url 'logout' %}" method="post">
+        {% csrf_token %}
+        <button type="submit" 
+                style="background: none; border: none; color: #dc3545; text-decoration: underline; cursor: pointer;">
+            تسجيل الخروج
+        </button>
+    </form>
+
+</div>
+{% endblock %}

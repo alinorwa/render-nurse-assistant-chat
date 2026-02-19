@@ -1,0 +1,18 @@
+<div class="flex flex-col gap-2 items-center w-24">
+    {% if is_urgent %}
+        <div class="bg-red-600 text-white p-2 rounded-md font-bold text-center w-full shadow-sm text-xs animate-pulse">
+            🚨 DOCTOR
+        </div>
+    {% else %}
+        <div class="bg-green-600 text-white p-2 rounded-md text-center w-full shadow-sm text-xs">
+            ✅ NURSE
+        </div>
+    {% endif %}
+    
+    {% if time %}
+        <div class="text-center text-gray-400 text-[10px] mt-1">
+            <div class="font-bold text-gray-600 text-xs">{{ time }}</div>
+            <div>{{ date }}</div>
+        </div>
+    {% endif %}
+</div>

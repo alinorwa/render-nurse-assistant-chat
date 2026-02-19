@@ -1,0 +1,51 @@
+{% extends 'base.html' %}
+
+{% block title %}Login{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2>Login</h2>
+    
+    <form method="post">
+        {% csrf_token %}
+        
+        <!-- عرض أخطاء الدخول -->
+        {% if form.errors %}
+            <div class="error-list">
+                The data is incorrect, please try again.
+            </div>
+        {% endif %}
+
+        <div class="form-group">
+            <label>Health Number / Username</label>
+            <input type="text" name="username" required placeholder="12345..." class="form-control">
+        </div>
+
+        <div class="form-group">
+            <label>Password</label>
+            <input type="password" name="password" required class="form-control">
+        </div>
+
+        <!-- Remember Me Checkbox -->
+<div class="flex items-center justify-between mb-4">
+    <div class="flex items-center">
+        <input id="remember_me" name="remember_me" type="checkbox" 
+               class="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-600">
+        <label for="remember_me" class="ml-2 block text-sm text-gray-900 dark:text-gray-300">
+            Remember me  
+        </label>
+    </div>
+</div>
+
+        <button type="submit" class="btn-primary">Login</button>
+        <div style="margin-top: 15px; text-align: center;">
+    <a href="{% url 'password_reset' %}" style="color: #0d6efd; text-decoration: none; font-size: 0.9em;">
+        Forgot Password?
+    </a>
+</div>
+    </form>
+
+ 
+    <a href="{% url 'register' %}" class="auth-link">Don't have an account? Register now</a>
+</div>
+{% endblock %}

@@ -1,0 +1,22 @@
+/* إخفاء حقول الإدخال الأصلية من الصفوف القديمة (التي لها ID) */
+/* نعتمد على أن الصفوف القديمة تملك قيمة في حقل ID المخفي أو الحقول للقراءة فقط */
+
+/* جعل العمود الأوسط (المحتوى) عريضاً جداً */
+td.field-smart_content_display {
+    width: 60%;
+    min-width: 400px;
+    white-space: normal !important;
+}
+
+/* تنسيق عمود الحالة والتاريخ */
+td.field-status_and_time {
+    vertical-align: top !important;
+    padding-top: 15px !important;
+}
+
+/* تحسين شكل الجدول */
+.tabular .form-row td {
+    vertical-align: top;
+    padding: 10px;
+    border-bottom: 1px solid #f0f0f0;
+}

@@ -1,0 +1,79 @@
+# ==================================
+# 🐍 Python & Django Core
+# ==================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Virtual Environments (بيئات العمل الافتراضية)
+env/
+venv/
+.venv/
+.env_win/
+
+# Django local database (إذا تم إنشاؤها بالخطأ)
+*.sqlite3
+db.sqlite3
+
+# ==================================
+# 🔐 Security & Environment Variables (أخطر جزء)
+# ==================================
+# يحتوي على مفاتيح Azure، تشفير المرضى، وكلمات مرور قاعدة البيانات
+.env
+.env.*
+! .env.example
+*.pem
+*.key
+
+# ==================================
+# 📸 User Media & Static Files (خصوصية المرضى)
+# ==================================
+# لا نرفع صور المرضى أو الملفات الصوتية للجيت
+media/
+# يمكن استثناء ملف .gitkeep للحفاظ على المجلد فارغاً
+!media/.gitkeep
+
+# الملفات المجمعة (التي ينشئها collectstatic)
+staticfiles/
+assets/
+
+# ==================================
+# 🐳 Docker & System
+# ==================================
+# ملفات التجاوز المحلية للدكر
+docker-compose.override.yml
+
+# Celery artifacts
+celerybeat-schedule
+celerybeat.pid
+
+# ==================================
+# 💻 IDE & Editor (VS Code)
+# ==================================
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ==================================
+# 🪟 Windows System Files
+# ==================================
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+__pycache__/
+*.py[cod]
+*$py.class
+env/
+venv/
+.venv/
+.env
+db.sqlite3
+media/
+staticfiles/
+.vscode/
+.idea/
+.DS_Store

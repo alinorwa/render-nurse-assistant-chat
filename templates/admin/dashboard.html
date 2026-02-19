@@ -1,0 +1,107 @@
+{% extends 'unfold/layouts/base_simple.html' %}
+{% load i18n %}
+
+{% block content %}
+<div class="p-6">
+    
+    <!-- 1. شريط التنقل العلوي (زر الرجوع) -->
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-2xl font-bold text-gray-800">📊 {{ title }}</h1>
+        <a href="{% url 'admin:index' %}" 
+           class="bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-2 px-4 rounded inline-flex items-center transition duration-200">
+            <span>🔙 Back to Admin</span>
+        </a>
+    </div>
+
+    <!-- بطاقات الأرقام السريعة (KPIs) - حجم مدمج -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-100 flex flex-col justify-between">
+            <h3 class="text-gray-500 text-xs font-medium uppercase tracking-wide">Total Refugees</h3>
+            <p class="text-2xl font-bold text-gray-800 mt-1">{{ kpi.total_refugees }}</p>
+        </div>
+        <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-100 flex flex-col justify-between">
+            <h3 class="text-red-500 text-xs font-medium uppercase tracking-wide">🚨 Urgent Cases</h3>
+            <p class="text-2xl font-bold text-red-600 mt-1">{{ kpi.urgent_sessions }}</p>
+        </div>
+        <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-100 flex flex-col justify-between">
+            <h3 class="text-green-500 text-xs font-medium uppercase tracking-wide">Active Chats</h3>
+            <p class="text-2xl font-bold text-green-600 mt-1">{{ kpi.active_now }}</p>
+        </div>
+    </div>
+
+    <!-- 2. الرسوم البيانية (تم تصغير الحاويات) -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        
+        <!-- رسم النشاط اليومي -->
+        <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
+            <h2 class="text-sm font-semibold mb-3 text-gray-700">Daily Activity (7 Days)</h2>
+            <!-- تصغير الارتفاع إلى h-48 بدلاً من h-64 -->
+            <div class="relative h-48 w-full">
+                <canvas id="activityChart"></canvas>
+            </div>
+        </div>
+
+        <!-- رسم توزيع اللغات -->
+        <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
+            <h2 class="text-sm font-semibold mb-3 text-gray-700">Language Distribution</h2>
+            <div class="relative h-48 w-full flex justify-center">
+                <canvas id="langChart"></canvas>
+            </div>
+        </div>
+
+        <!-- رسم الأوبئة (بعرض كامل ولكن ارتفاع أقل) -->
+        <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-100 md:col-span-2">
+            <h2 class="text-sm font-semibold mb-3 text-red-700">Epidemic Alerts History</h2>
+            <div class="relative h-48 w-full">
+                <canvas id="epidemicChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- البيانات -->
+{{ chart_activity|json_script:"activity-data" }}
+{{ chart_languages|json_script:"lang-data" }}
+{{ chart_epidemics|json_script:"epidemic-data" }}
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const activityData = JSON.parse(document.getElementById('activity-data').textContent);
+        const langData = JSON.parse(document.getElementById('lang-data').textContent);
+        const epidemicData = JSON.parse(document.getElementById('epidemic-data').textContent);
+
+        // إعدادات عامة
+        const commonOptions = {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } }
+            }
+        };
+
+        // دمج الإعدادات
+        if (activityData.options) Object.assign(activityData.options, commonOptions);
+        else activityData.options = commonOptions;
+
+        if (langData.options) Object.assign(langData.options, commonOptions);
+        else langData.options = commonOptions;
+
+        // للأوبئة: نستخدم الإعدادات القادمة من السيرفر (لأن فيها Stacked) ونضيف عليها الـ Common
+        const finalEpidemicOptions = { 
+            ...commonOptions, 
+            ...epidemicData.options, 
+            scales: { x: { stacked: true }, y: { stacked: true } } 
+        };
+
+        new Chart(document.getElementById('activityChart'), activityData);
+        new Chart(document.getElementById('langChart'), langData);
+        new Chart(document.getElementById('epidemicChart'), {
+            type: 'bar',
+            data: epidemicData.data,
+            options: finalEpidemicOptions
+        });
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,21 @@
+{
+  "name": "Nurse Assistant - Medical Support",
+  "short_name": "NurseApp",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color":"#ffffff",
+  "theme_color": "#0d6efd",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/static/images/img-icon.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "/static/images/img-icon.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ]
+}

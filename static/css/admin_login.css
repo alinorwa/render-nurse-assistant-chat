@@ -1,0 +1,152 @@
+/* static/css/admin_login.css */
+
+/* متغيرات الألوان لسهولة التعديل لاحقاً */
+:root {
+    --bg-page: #111827;       /* رمادي غامق جداً للخلفية */
+    --bg-card: #1f2937;       /* رمادي أفتح للكارت */
+    --border-color: #374151;  /* لون الحدود */
+    --text-main: #ffffff;     /* النص الأبيض */
+    --text-muted: #9ca3af;    /* النص الرمادي */
+    --primary-color: #059669; /* أخضر/تيركواز طبي */
+    --primary-hover: #047857;
+    --input-bg: #111827;      /* خلفية الحقول */
+    --error-bg: rgba(127, 29, 29, 0.3);
+    --error-text: #fca5a5;
+    --error-border: #991b1b;
+}
+
+body {
+    background-color: var(--bg-page) !important;
+    font-family: system-ui, -apple-system, sans-serif;
+}
+
+/* الحاوية الرئيسية */
+.login-container {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 3rem 1.5rem;
+}
+
+/* قسم العنوان */
+.login-header {
+    text-align: center;
+    margin-bottom: 2.5rem;
+    width: 100%;
+    max-width: 42rem;
+}
+
+.login-header h2 {
+    font-size: 0.875rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-muted);
+    margin-bottom: 0.75rem;
+}
+
+.login-header h1 {
+    font-size: 3rem;
+    font-weight: 800;
+    color: var(--text-main);
+    letter-spacing: -0.025em;
+}
+
+/* الكارت */
+.login-card {
+    width: 100%;
+    max-width: 600px;
+    background-color: var(--bg-card);
+    padding: 3rem 2.5rem;
+    border-radius: 1rem;
+    border: 1px solid var(--border-color);
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+}
+
+/* صندوق الأخطاء */
+.error-box {
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+    border-radius: 0.5rem;
+    background-color: var(--error-bg);
+    border: 1px solid var(--error-border);
+    color: var(--error-text);
+    text-align: center;
+    font-weight: 500;
+}
+
+/* الحقول */
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+.form-label {
+    display: block;
+    font-size: 1.125rem;
+    font-weight: 500;
+    color: #e5e7eb;
+    margin-bottom: 0.5rem;
+}
+
+.form-input {
+    display: block;
+    width: 100%;
+    border-radius: 0.5rem;
+    border: 2px solid var(--border-color);
+    padding: 1rem;
+    background-color: var(--input-bg);
+    color: var(--text-main);
+    font-size: 1.125rem;
+    outline: none;
+    transition: all 0.2s;
+}
+
+.form-input:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 1px var(--primary-color);
+}
+
+/* الزر */
+.login-btn {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border-radius: 0.5rem;
+    background-color: var(--primary-color);
+    padding: 1rem;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: white;
+    border: none;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    margin-top: 1rem;
+}
+
+.login-btn:hover {
+    background-color: var(--primary-hover);
+}
+
+/* الفوتر والرابط */
+.login-footer {
+    text-align: center;
+    margin-top: 2rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border-color);
+}
+
+.forgot-link {
+    font-size: 1rem;
+    font-weight: 500;
+    color: #60a5fa; /* أزرق فاتح للرابط */
+    text-decoration: none;
+    transition: color 0.2s;
+}
+
+.forgot-link:hover {
+    color: #93c5fd;
+    text-decoration: underline;
+}

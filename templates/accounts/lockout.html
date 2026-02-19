@@ -1,0 +1,138 @@
+{% extends 'base.html' %} {% block title %}The account has been temporarily suspended.{% endblock %}
+{% block content %}
+<div
+  class="card"
+  style="text-align: center; border-top: 5px solid #dc3545; padding-top: 40px"
+>
+  <!-- أيقونة القفل -->
+  <div style="margin-bottom: 10px">
+    <span style="font-size: 4rem">🔒</span>
+  </div>
+
+  <h2 style="color: #dc3545; margin-bottom: 10px">Sorry, the account has been locked.</h2>
+
+  <p style="font-size: 1.1em; color: #555; margin-bottom: 30px">
+    Login attempts have been exhausted. For protection, please wait a moment.
+  </p>
+
+  <!-- منطقة العداد الكبير -->
+  <div
+    style="
+      background-color: #f8f9fa;
+      border: 2px dashed #dc3545;
+      border-radius: 15px;
+      padding: 20px;
+      margin: 20px 0;
+    "
+  >
+    <div style="font-size: 0.9em; color: #777; margin-bottom: 5px">
+      You can try again within
+    </div>
+
+    <!-- العداد الرقمي -->
+    <div
+      id="countdown"
+      style="
+        font-size: 3.5rem;
+        font-weight: bold;
+        color: #dc3545;
+        font-family: monospace;
+      "
+    >
+      60:00
+    </div>
+
+    <div
+      id="redirect-msg"
+      style="font-size: 0.9em; color: #28a745; display: none"
+    >
+    You are being redirected to the login page...
+    </div>
+  </div>
+
+  <hr />
+
+  <h3 style="margin-top: 20px"> An emergency situation?</h3>
+  <p>Don't wait until time runs out if you need immediate help.</p>
+
+  <div style="margin-top: 20px">
+    <!-- زر وهمي لتحديث الصفحة (يساعد المستخدم النفسي) -->
+    <button
+      onclick="window.location.reload()"
+      class="btn-primary"
+      style="background-color: #6c757d; width: auto; margin: 5px"
+    >
+       Time update
+    </button>
+
+    <a
+      href="#"
+      class="btn-primary"
+      style="
+        background-color: #dc3545;
+        display: inline-block;
+        width: auto;
+        text-decoration: none;
+        margin: 5px;
+      "
+    >
+      🚑   Request for immediate assistance
+    </a>
+  </div>
+</div>
+
+<script>
+  // إعدادات الوقت (بالدقيقة) - يجب أن تطابق إعدادات AXES_COOLOFF_TIME
+  const LOCKOUT_MINUTES = 1;
+
+  function startTimer() {
+    const timerDisplay = document.getElementById("countdown");
+    const msgDisplay = document.getElementById("redirect-msg");
+
+    // 1. التحقق من التخزين المحلي: هل يوجد وقت انتهاء مخزن مسبقاً؟
+    let endTime = localStorage.getItem("axes_lockout_end");
+
+    // إذا لم يوجد وقت مخزن (أول مرة تفتح الصفحة)، نضع وقتاً جديداً
+    if (!endTime) {
+      const now = new Date().getTime();
+      endTime = now + LOCKOUT_MINUTES * 60 * 1000;
+      localStorage.setItem("axes_lockout_end", endTime);
+    }
+
+    // 2. دالة التحديث كل ثانية
+    const interval = setInterval(function () {
+      const now = new Date().getTime();
+      const distance = endTime - now;
+
+      // حساب الدقائق والثواني
+      const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+      // تنسيق الوقت (إضافة صفر لليسار إذا كان رقماً واحداً)
+      timerDisplay.innerHTML =
+        (minutes < 10 ? "0" + minutes : minutes) +
+        ":" +
+        (seconds < 10 ? "0" + seconds : seconds);
+
+      // 3. عند انتهاء الوقت
+      if (distance < 0) {
+        clearInterval(interval);
+        timerDisplay.innerHTML = "00:00";
+        timerDisplay.style.color = "#28a745"; // يتحول للأخضر
+        msgDisplay.style.display = "block";
+
+        // تنظيف التخزين المحلي
+        localStorage.removeItem("axes_lockout_end");
+
+        // التوجيه التلقائي لصفحة الدخول
+        setTimeout(() => {
+          window.location.href = "{% url 'login' %}";
+        }, 2000); // ننتظر ثانيتين ليقرأ المستخدم رسالة النجاح
+      }
+    }, 1000);
+  }
+
+  // تشغيل العداد عند تحميل الصفحة
+  startTimer();
+</script>
+{% endblock %}

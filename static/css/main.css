@@ -1,0 +1,87 @@
+/* static/css/main.css */
+:root {
+    --primary-color: #0d6efd; /* لون طبي أزرق */
+    --bg-color: #f8f9fa;
+    --text-color: #212529;
+    --card-bg: #ffffff;
+    --error-color: #dc3545;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    line-height: 1.6;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+/* الحاوية الرئيسية */
+.container {
+    width: 100%;
+    max-width: 600px; /* عرض مناسب للموبايل والتابلت */
+    margin: 0 auto;
+    padding: 20px;
+    flex: 1;
+}
+
+/* تصميم الكروت (الفورم) */
+.card {
+    background: var(--card-bg);
+    padding: 2rem;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    margin-top: 2rem;
+}
+
+h1, h2 { text-align: center; margin-bottom: 1.5rem; color: var(--primary-color); }
+
+/* المدخلات والأزرار */
+.form-group { margin-bottom: 1rem; }
+
+label { display: block; margin-bottom: 0.5rem; font-weight: bold; }
+
+input[type="text"], 
+input[type="password"], 
+select {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #ced4da;
+    border-radius: 8px;
+    font-size: 16px; /* حجم خط مريح للموبايل */
+}
+
+button.btn-primary {
+    width: 100%;
+    padding: 12px;
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 18px;
+    cursor: pointer;
+    font-weight: bold;
+    margin-top: 1rem;
+}
+
+button.btn-primary:hover { background-color: #0b5ed7; }
+
+/* رسائل الخطأ */
+.error-list {
+    background-color: #f8d7da;
+    color: var(--error-color);
+    padding: 10px;
+    border-radius: 6px;
+    margin-bottom: 1rem;
+    list-style: none;
+    font-size: 0.9rem;
+}
+
+.help-text { font-size: 0.85rem; color: #6c757d; margin-top: 0.25rem; }
+
+/* الروابط */
+.auth-link { text-align: center; margin-top: 1.5rem; display: block; text-decoration: none; color: var(--primary-color); }
+

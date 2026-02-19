@@ -1,0 +1,64 @@
+{% load static %}
+<!DOCTYPE html>
+<!-- تحديد اتجاه الصفحة بناءً على اللغة المختارة -->
+<html
+  lang="{{ user.native_language|default:'en' }}"
+  dir="{% if user.native_language == 'ar' or user.native_language == 'ps' %}rtl{% else %}ltr{% endif %}"
+>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{% block title %}Refugee Aid{% endblock %}</title>
+
+    <!-- ملف الستايل -->
+    <link rel="stylesheet" href="{% static 'css/main.css' %}" />
+    <link
+      rel="icon"
+      type="image/webp"
+      href="{% static 'images/icon-web-home.jpeg' %}"
+    />
+
+    <!-- PWA Manifest (سنضيفه لاحقاً) -->
+    <link rel="manifest" href="/static/manifest.json" />
+  </head>
+  <body>
+  
+
+    <main class="container">
+      <!-- منطقة عرض الرسائل (فلاش) من السيرفر -->
+      {% if messages %} {% for message in messages %}
+      <div class="error-list" style="background-color: #d1e7dd; color: #0f5132">
+        {{ message }}
+      </div>
+      {% endfor %} {% endif %}
+
+      <!-- هنا سيتم حقن محتوى الصفحات الفرعية -->
+      {% block content %} {% endblock %}
+    </main>
+
+    <footer
+      style="text-align: center; padding: 20px; font-size: 0.8rem; color: #777"
+    >
+      &copy; 2026 Nurse Assistant , Designed By Ali
+    </footer>
+
+    <!-- PWA Service Worker Registration -->
+    <script>
+      if ("serviceWorker" in navigator) {
+        window.addEventListener("load", function () {
+          navigator.serviceWorker.register("{% url 'sw_js' %}").then(
+            function (registration) {
+              console.log(
+                "ServiceWorker registration successful with scope: ",
+                registration.scope
+              );
+            },
+            function (err) {
+              console.log("ServiceWorker registration failed: ", err);
+            }
+          );
+        });
+      }
+    </script>
+  </body>
+</html>

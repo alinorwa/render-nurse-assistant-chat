@@ -1,0 +1,112 @@
+/* 1. إخفاء شريط التبويبات (General / Messages) */
+/* Unfold يستخدم nav للتبويبات، سنخفيه ليظهر الشات مباشرة */
+div[x-data*="tab"] nav,
+.tab-list,
+nav[aria-label="Tabs"] {
+    display: none !important;
+}
+
+/* 2. إخفاء مجموعة الحقول العامة (General Info) */
+/* نستهدف الكلاسات التي وضعناها في البايثون */
+fieldset.hidden,
+fieldset.\!hidden,
+.d-none {
+    display: none !important;
+    height: 0 !important;
+    overflow: hidden !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+}
+
+/* 3. إخفاء العنوان "Chat session" المكرر داخل الصفحة */
+/* h1.text-xl.font-semibold { */
+    /* display: none !important; */ /* اختياري: إذا أردت إخفاء العنوان الرئيسي أيضاً */
+/* } */
+
+/* 4. تكبير مساحة الشات لتملأ الفراغ */
+.inline-group {
+    margin-top: 0 !important;
+}
+
+
+
+
+
+
+
+/* 1. إخفاء حقول الإدخال (text + image) من الرسائل المحفوظة */
+/* نستهدف الصفوف التي لها ID (أي محفوظة سابقاً) */
+tr.form-row.has_original td.field-text_original,
+tr.form-row.has_original td.field-image {
+  display: none !important;
+}
+
+/* 2. إخفاء عناوين الأعمدة لهذه الحقول لأنها فارغة الآن */
+th.column-text_original,
+th.column-image {
+  display: none !important;
+  width: 0 !important;
+}
+
+/* 3. تنسيق العمود الأوسط (المحتوى الذكي) */
+td.field-smart_content_display {
+  width: 60%;
+  min-width: 400px;
+  white-space: normal !important;
+  vertical-align: top !important;
+}
+
+/* 4. تنسيق سطر الرد الجديد (Add Row) */
+/* هنا نريد إظهار حقول الكتابة */
+tr.form-row.dynamic-messages:not(.has_original) td.field-text_original,
+tr.form-row.dynamic-messages:not(.has_original) td.field-image {
+  display: table-cell !important;
+}
+
+/* إخفاء المحتوى الذكي والحالة من سطر الرد الجديد (لأنه فارغ) */
+tr.form-row.dynamic-messages:not(.has_original) td.field-smart_content_display,
+tr.form-row.dynamic-messages:not(.has_original) td.field-status_and_time {
+  display: none !important;
+}
+
+/* إخفاء المجموعة التي تحمل الكلاس hidden-general-info */
+fieldset.hidden-general-info {
+  display: none !important;
+}
+
+/* إخفاء العنوان "Message" الذي يظهر فوق الجدول إذا كان مزعجاً */
+h2 {
+  display: none;
+}
+
+
+
+
+/* === إضافة جديدة: تأثير الوميض للتنبيهات === */
+@keyframes pulse-red {
+    0% { opacity: 1; }
+    50% { opacity: 0.6; }
+    100% { opacity: 1; }
+}
+
+.alert-pulse {
+    animation: pulse-red 2s infinite;
+}
+
+
+
+
+/* إجبار حقل زر التصدير على الظهور حتى لو كانت المجموعة مخفية */
+.field-export_session_btn {
+    display: block !important;
+    background: transparent !important;
+    padding: 10px 0 !important;
+    margin-bottom: 20px;
+    border: none !important;
+}
+
+/* إخفاء التسمية (Label) الخاصة بالزر ليبقى الزر وحده */
+.field-export_session_btn label {
+    display: none !important;
+}

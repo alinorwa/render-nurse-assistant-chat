@@ -1,0 +1,163 @@
+{% extends 'base.html' %}
+
+{% block title %}New Registration {% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2 id="page-title">Register a new patient</h2>
+    
+    <form method="post" novalidate>
+        {% csrf_token %}
+        
+        {% if form.non_field_errors %}
+            <ul class="error-list">
+                {% for error in form.non_field_errors %}
+                    <li>{{ error }}</li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+
+        <!-- 1. حقل اللغة -->
+        <div class="form-group">
+            <label for="id_native_language">Language </label>
+            {{ form.native_language }}
+        </div>
+
+        <!-- 🛑 2. حقل الإيميل (الإضافة الجديدة) -->
+        <div class="form-group">
+            <label for="id_email">Email Address </label>
+            <!-- نقوم بإضافة كلاس يدوياً إذا لم يكن مضافاً من الفورم -->
+            <input type="email" name="email" id="id_email" required 
+                   value="{{ form.email.value|default:'' }}"
+                   style="width: 100%; padding: 12px; border: 1px solid #ced4da; border-radius: 8px; font-size: 16px;">
+            
+            {% if form.email.errors %}
+                <div class="error-list">{{ form.email.errors.0 }}</div>
+            {% endif %}
+            <div class="help-text" style="color: #6c757d; font-size: 0.8rem;">
+                Important for password recovery 
+            </div>
+        </div>
+
+        <!-- 3. الرقم الصحي -->
+        <div class="form-group">
+            <label id="lbl_username">Health Number </label>
+            {{ form.username }}
+            <div class="help-text" id="help_username"> Digits only</div>
+            {% if form.username.errors %}<div class="error-list">{{ form.username.errors.0 }}</div>{% endif %}
+        </div>
+        
+        <!-- 4. الاسم الكامل -->
+        <div class="form-group">
+            <label id="lbl_fullname">Full Name </label>
+            {{ form.full_name }}
+        </div>
+
+        <!-- 5. كلمة المرور -->
+        <div class="form-group">
+            <label id="lbl_password">Password </label>
+            {{ form.password }}
+            
+            <!-- شريط قوة كلمة المرور -->
+            <div class="password-strength-container" style="margin-top: 8px; background-color: #e9ecef; height: 5px; border-radius: 3px; overflow: hidden;">
+                <div id="password-strength-bar" style="width: 0%; height: 100%; background-color: #dc3545; transition: width 0.3s, background-color 0.3s;"></div>
+            </div>
+            
+            <div id="password-hint" class="help-text" style="color: #6c757d; font-size: 0.85rem; margin-top: 5px;">
+                Please use letters and numbers.
+            </div>
+        </div>
+
+        <!-- 6. تأكيد كلمة المرور -->
+        <div class="form-group">
+            <label id="lbl_confirm">Confirm Password </label>
+            {{ form.confirm_password }}
+            <div id="match-message" style="font-size: 0.8rem; margin-top: 2px;"></div>
+        </div>
+
+        <button type="submit" class="btn-primary" id="btn_submit">Register & Login</button>
+    </form>
+
+   <a href="{% url 'login' %}" class="auth-link" id="link_login">Have an account? Log in</a>
+</div>
+
+<!-- نفس السكربت السابق للترجمة والتفاعل -->
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const langSelect = document.getElementById('id_native_language');
+        const passInput = document.getElementById('id_password');
+        const passBar = document.getElementById('password-strength-bar');
+        const passHint = document.getElementById('password-hint');
+        
+        const dictionary = {
+            'ar': {
+                hint: "يجب استخدام أحرف وأرقام لتقوية كلمة المرور.",
+                btn: "تسجيل ودخول",
+                login: "لديك حساب؟ تسجيل الدخول"
+            },
+            'en': {
+                hint: "Use letters and numbers for a strong password.",
+                btn: "Register & Login",
+                login: "Already have an account? Login"
+            },
+            'no': {
+                hint: "Bruk bokstaver og tall for et sterkt passord.",
+                btn: "Registrer og logg inn",
+                login: "Har du allerede konto? Logg inn"
+            },
+            'uk': {
+                hint: "Використовуйте літери та цифри.",
+                btn: "Реєстрація та вхід",
+                login: "Вже є акаунт? Увійти"
+            },
+            'so': {
+                hint: "Isticmaal xarfo iyo lambaro.",
+                btn: "Diiwaangeli oo soo gal",
+                login: "Ma leedahay akoon? Soo gal"
+            }
+        };
+
+        function updateLanguage() {
+            const lang = langSelect.value;
+            const texts = dictionary[lang] || dictionary['en'];
+
+            passHint.innerText = texts.hint;
+            document.getElementById('btn_submit').innerText = texts.btn;
+            document.getElementById('link_login').innerText = texts.login;
+            
+            if (lang === 'ar' || lang === 'ps') {
+                document.body.dir = 'rtl';
+            } else {
+                document.body.dir = 'ltr';
+            }
+        }
+
+        function checkPasswordStrength() {
+            const val = passInput.value;
+            let strength = 0;
+            if (val.length > 0) strength += 1;
+            if (val.length > 5) strength += 1; 
+            if (val.match(/[a-z]/) && val.match(/[0-9]/)) strength += 1; 
+            if (val.length > 8 && val.match(/[A-Z]/)) strength += 1; 
+
+            if (strength === 0) {
+                passBar.style.width = '0%';
+                passBar.style.backgroundColor = '#dc3545';
+            } else if (strength < 3) {
+                passBar.style.width = '30%';
+                passBar.style.backgroundColor = '#dc3545';
+            } else if (strength === 3) {
+                passBar.style.width = '60%';
+                passBar.style.backgroundColor = '#ffc107';
+            } else {
+                passBar.style.width = '100%';
+                passBar.style.backgroundColor = '#28a745';
+            }
+        }
+
+        langSelect.addEventListener('change', updateLanguage);
+        passInput.addEventListener('input', checkPasswordStrength);
+        updateLanguage();
+    });
+</script>
+{% endblock %}
