@@ -30,8 +30,10 @@ IN_RENDER_DEPLOYMENT = env.bool('RENDER', False)
 
 DEBUG = env.bool('DJANGO_DEBUG', False)
 
-SECRET_KEY = env('DJANGO_SECRET_KEY', default='unsafe-secret-key-change-in-prod')
-DB_ENCRYPTION_KEY = env('DB_ENCRYPTION_KEY', default='sEcret_Key_Must_Be_32_UrlSafe_Base64=')
+SECRET_KEY = env('DJANGO_SECRET_KEY' )
+DB_ENCRYPTION_KEY = env('DB_ENCRYPTION_KEY')
+
+print("ENCRYPTION KEY LOADED:", bool(DB_ENCRYPTION_KEY))
 
 ALLOWED_HOSTS = ["*"] # Render يدير النطاقات، * مقبولة أو ضع نطاقك الخاص
 
