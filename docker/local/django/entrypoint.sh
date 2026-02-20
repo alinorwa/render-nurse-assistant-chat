@@ -20,4 +20,27 @@ if [ -z "${RENDER:-}" ]; then
     fi
 fi
 
+# ✅ تنفيذ الترحيلات هنا (مهم جداً)
+python manage.py migrate
+
+# ✅ إنشاء مستخدم مشرف (مرة واحدة فقط)
+python manage.py shell -c "
+from apps.accounts.models import User
+import os
+
+# فقط نفذ إذا كان هذا هو Render وليس محلياً
+if os.getenv('RENDER'):
+    if not User.objects.filter(username='admin').exists():
+        User.objects.create_superuser(
+            username='admin',
+            email='alialrubay499@gmail.com',
+            password='admin123',
+            full_name='user admin'
+        )
+        print('✅ Superuser created on Render')
+    else:
+        print('✅ Superuser already exists')
+"
+
+# ✅ استدعاء start.sh
 exec "$@"
