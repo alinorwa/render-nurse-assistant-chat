@@ -6,6 +6,7 @@ from django.db import transaction
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 import time
+import traceback # لاستعراض الأخطاء في اللوج
 
 from .models import ChatSession, Message
 from apps.core.services import AzureTranslator 
@@ -17,7 +18,6 @@ def chat_room(request):
         return redirect('admin:index')
     
     # رسالة الخصوصية
-    # Privacy message
     base_warning = "🔒 For your privacy, do not write your name or health ID here. We identify you automatically."
     privacy_warning = base_warning 
 
@@ -37,15 +37,12 @@ def chat_room(request):
     })
 
 
-
-
 @login_required
 @require_POST
-def upload_image(request): # يمكنك تسميتها upload_file ليكون الاسم أدق
+def upload_image(request):
     user = request.user
     session_id = request.POST.get('session_id')
     
-    # استقبال إما صورة أو صوت
     image_file = request.FILES.get('image')
     audio_file = request.FILES.get('audio')
 
@@ -57,7 +54,7 @@ def upload_image(request): # يمكنك تسميتها upload_file ليكون ا
         if session.refugee != user and session.nurse != user:
              return JsonResponse({'error': 'Unauthorized'}, status=403)
 
-        # حفظ الرسالة
+        # 1. حفظ الرسالة في قاعدة البيانات (هذا هو الأهم)
         with transaction.atomic():
             message = Message(session=session, sender=user)
             
@@ -67,44 +64,56 @@ def upload_image(request): # يمكنك تسميتها upload_file ليكون ا
             
             if audio_file:
                 message.audio = audio_file
-                # نترك النص فارغاً ليقوم Whisper بتعبئته لاحقاً
-                # أو نضع نصاً مؤقتاً
                 if not message.text_original:
                     message.text_original = "🎤 ..." 
 
-            message.save() # سيتم تفعيل Celery تلقائياً (كما برمجناه في models.py)
+            message.save() 
 
-            # تجهيز رابط الملف للإشعار
-            file_url = message.image.url if message.image else message.audio.url
-            # نضيف Timestamp لكسر الكاش
-            file_url = f"{file_url}?v={int(time.time())}"
+            # تجهيز الرابط
+            file_url = ""
+            if message.image:
+                file_url = f"{message.image.url}?v={int(time.time())}"
+            elif message.audio:
+                file_url = f"{message.audio.url}?v={int(time.time())}"
 
-            # إشعار الويب سوكيت
+            # 2. تعريف دالة الإرسال عبر الويب سوكيت
             def send_ws():
-                channel_layer = get_channel_layer()
-                
-                payload = {
-                    'type': 'chat_message',
-                    'id': str(message.id),
-                    'sender_id': user.id,
-                    'text_original': message.text_original,
-                    'text_translated': "",
-                    'timestamp': message.timestamp.isoformat(),
-                }
-                
-                if message.image:
-                    payload['image_url'] = file_url
-                if message.audio:
-                    payload['audio_url'] = file_url # سنحتاج لمعالجة هذا في JS
+                try:
+                    channel_layer = get_channel_layer()
+                    
+                    payload = {
+                        'type': 'chat_message',
+                        'id': str(message.id),
+                        'sender_id': user.id,
+                        'text_original': message.text_original,
+                        'text_translated': "",
+                        # 🛑 إصلاح التاريخ: نرسله بصيغة ISO كاملة ليفهمها الجافاسكريبت
+                        'timestamp': message.timestamp.isoformat(),
+                        'is_read': False, # الحالة الافتراضية
+                    }
+                    
+                    if message.image:
+                        payload['image_url'] = file_url
+                    if message.audio:
+                        payload['audio_url'] = file_url
 
-                async_to_sync(channel_layer.group_send)(
-                    f'chat_{session.id}',
-                    payload
-                )
+                    async_to_sync(channel_layer.group_send)(
+                        f'chat_{session.id}',
+                        payload
+                    )
+                except Exception as ws_error:
+                    # 🛑 إذا فشل الويب سوكيت، نطبع الخطأ فقط ولا نوقف الرد
+                    # هذا يحل مشكلة "Upload Failed" والصورة موجودة
+                    print(f"⚠️ WebSocket Send Failed: {ws_error}")
+                    traceback.print_exc()
 
+            # تشغيل الإشعار بعد انتهاء الحفظ
             transaction.on_commit(send_ws)
 
+        # 3. إرجاع النجاح للمتصفح فوراً
         return JsonResponse({'status': 'success', 'url': file_url})
 
     except Exception as e:
+        print(f"❌ Upload View Error: {e}")
+        traceback.print_exc()
         return JsonResponse({'error': str(e)}, status=500)
