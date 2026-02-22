@@ -76,6 +76,7 @@ class Message(models.Model):
     language_code = models.CharField(max_length=10, blank=True)
     text_translated = EncryptedTextField(blank=True, null=True, verbose_name=_("Translated Text"))
     image = models.ImageField(upload_to='chat_images/%Y/%m/', blank=True, null=True, verbose_name="Medical Image")
+    audio = models.FileField(upload_to='chat_audio/%Y/%m/', blank=True, null=True, verbose_name="Voice Note")
     ai_analysis = EncryptedTextField(blank=True, null=True, verbose_name="AI Medical Analysis")
 
     timestamp = models.DateTimeField(auto_now_add=True)

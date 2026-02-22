@@ -6,10 +6,12 @@ from django.db import transaction
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 import time
-import traceback # لاستعراض الأخطاء في اللوج
+import traceback
 
 from .models import ChatSession, Message
 from apps.core.services import AzureTranslator 
+# 🛑 استيراد المهام
+from .tasks import transcribe_voice_note, process_message_ai
 
 @login_required
 def chat_room(request):
@@ -17,7 +19,6 @@ def chat_room(request):
     if user.is_staff:
         return redirect('admin:index')
     
-    # رسالة الخصوصية
     base_warning = "🔒 For your privacy, do not write your name or health ID here. We identify you automatically."
     privacy_warning = base_warning 
 
@@ -54,18 +55,20 @@ def upload_image(request):
         if session.refugee != user and session.nurse != user:
              return JsonResponse({'error': 'Unauthorized'}, status=403)
 
-        # 1. حفظ الرسالة في قاعدة البيانات (هذا هو الأهم)
         with transaction.atomic():
             message = Message(session=session, sender=user)
             
+            # معالجة الصورة
             if image_file:
                 message.image = image_file
                 message.text_original = "[Image Sent]"
             
+            # معالجة الصوت
             if audio_file:
                 message.audio = audio_file
+                # نص مؤقت حتى ينتهي التحليل
                 if not message.text_original:
-                    message.text_original = "🎤 ..." 
+                    message.text_original = "🎤 Processing audio..." 
 
             message.save() 
 
@@ -76,7 +79,7 @@ def upload_image(request):
             elif message.audio:
                 file_url = f"{message.audio.url}?v={int(time.time())}"
 
-            # 2. تعريف دالة الإرسال عبر الويب سوكيت
+            # إشعار الويب سوكيت الفوري
             def send_ws():
                 try:
                     channel_layer = get_channel_layer()
@@ -87,9 +90,8 @@ def upload_image(request):
                         'sender_id': user.id,
                         'text_original': message.text_original,
                         'text_translated': "",
-                        # 🛑 إصلاح التاريخ: نرسله بصيغة ISO كاملة ليفهمها الجافاسكريبت
                         'timestamp': message.timestamp.isoformat(),
-                        'is_read': False, # الحالة الافتراضية
+                        'is_read': False, 
                     }
                     
                     if message.image:
@@ -102,15 +104,19 @@ def upload_image(request):
                         payload
                     )
                 except Exception as ws_error:
-                    # 🛑 إذا فشل الويب سوكيت، نطبع الخطأ فقط ولا نوقف الرد
-                    # هذا يحل مشكلة "Upload Failed" والصورة موجودة
                     print(f"⚠️ WebSocket Send Failed: {ws_error}")
                     traceback.print_exc()
 
-            # تشغيل الإشعار بعد انتهاء الحفظ
             transaction.on_commit(send_ws)
 
-        # 3. إرجاع النجاح للمتصفح فوراً
+            # 🛑 تشغيل المهام الخلفية
+            if audio_file:
+                # إذا كان صوتاً، نحوله لنص أولاً (ثم هو سيستدعي الترجمة لاحقاً)
+                transaction.on_commit(lambda: transcribe_voice_note.delay(message.id))
+            elif image_file:
+                # إذا كانت صورة، نعالجها مباشرة
+                transaction.on_commit(lambda: process_message_ai.delay(message.id))
+
         return JsonResponse({'status': 'success', 'url': file_url})
 
     except Exception as e:

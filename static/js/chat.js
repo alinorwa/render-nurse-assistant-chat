@@ -12,6 +12,11 @@ function initChat(config) {
     let chatSocket = null;
     let reconnectInterval = null;
 
+    // --- Voice Recording Variables ---
+    let mediaRecorder = null;
+    let audioChunks = [];
+    const micBtn = document.getElementById('mic-btn');
+
     function connect() {
         const protocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
         const host = window.location.host;
@@ -119,17 +124,12 @@ function initChat(config) {
         });
     }
 
-    // 🛑 تحسين دالة الوقت لإصلاح مشكلة NaN
     function formatTime(isoString){
         if(!isoString) return "";
         
         const d = new Date(isoString);
-        
-        // التحقق مما إذا كان التاريخ صالحاً
         if (isNaN(d.getTime())) {
-            // إذا فشل التحليل، نحاول استخلاص الوقت يدوياً إذا كان بصيغة HH:MM
             if(isoString.includes(':') && isoString.length === 5) {
-                // نفترض أنه تاريخ اليوم
                 const today = new Date();
                 return `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')} / ${isoString}`;
             }
@@ -147,9 +147,32 @@ function initChat(config) {
     function handleMessage(data){
         const msgId = data.is_pending ? data.id : `msg-${data.id}`;
         
-        if (document.getElementById(msgId)) return;
+        // 🛑 إذا كانت الرسالة موجودة (مثلاً حالة Processing)، نحدثها بدلاً من تجاهلها
+        let div = document.getElementById(msgId);
+        if (div) {
+            // تحديث المحتوى (مثلاً تحول النص من Processing إلى النص الحقيقي)
+            const bodyDiv = div.querySelector('.msg-body');
+            if(bodyDiv) {
+                 let newBody = "";
+                 if(data.image_url) {
+                      // ... images ...
+                 } else {
+                     let text = "";
+                     if(String(data.sender_id) === currentUserId){
+                         text = data.text_original || "";
+                     } else {
+                         text = data.text_translated || data.text_original || "";
+                     }
+                     text = text.replace(/</g,"&lt;").replace(/>/g,"&gt;");
+                     newBody = text;
+                 }
+                 // فقط إذا تغير النص نقوم بالتحديث
+                 if(bodyDiv.innerHTML !== newBody) bodyDiv.innerHTML = newBody;
+            }
+            return;
+        }
 
-        let div = document.createElement('div');
+        div = document.createElement('div');
         div.id = msgId;
 
         let msgClass = (String(data.sender_id) === currentUserId) ? "sent" : "received";
@@ -182,6 +205,9 @@ function initChat(config) {
             body = text;
         }
 
+        // نضع الجسم في div منفصل لسهولة التحديث لاحقاً
+        const bodyHtml = `<div class="msg-body">${body}</div>`;
+
         const timeHtml = `<span class="time">${formatTime(data.timestamp)}</span>`;
         
         let tickHtml = '';
@@ -205,11 +231,12 @@ function initChat(config) {
         `;
 
         div.className = `message ${msgClass}`;
-        div.innerHTML = senderLabel + body + metaHtml;
+        div.innerHTML = senderLabel + bodyHtml + metaHtml;
         document.querySelector('#chat-log').appendChild(div);
         scrollToBottom();
     }
 
+    // --- Image Upload ---
     const imageBtn = document.getElementById('image-btn');
     const imageInput = document.getElementById('image-input');
 
@@ -220,18 +247,78 @@ function initChat(config) {
     if(imageInput) {
         imageInput.onchange = function(){
             const file = imageInput.files[0];
-            if(file) uploadImage(file);
+            if(file) uploadFile(file, 'image');
         };
     }
 
-    function uploadImage(file){
+    // --- Voice Recording Logic 🎙️ ---
+    if(micBtn) {
+        // ضغط مستمر للبدء
+        micBtn.onmousedown = startRecording;
+        micBtn.ontouchstart = startRecording; // للموبايل
+
+        // رفع الإصبع للإيقاف والإرسال
+        micBtn.onmouseup = stopRecording;
+        micBtn.ontouchend = stopRecording; // للموبايل
+    }
+
+    function startRecording(e) {
+        if(e) e.preventDefault(); // منع تحديد النص
+        
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            showError("Microphone not supported on this browser.");
+            return;
+        }
+
+        navigator.mediaDevices.getUserMedia({ audio: true })
+            .then(stream => {
+                mediaRecorder = new MediaRecorder(stream);
+                audioChunks = [];
+
+                mediaRecorder.ondataavailable = event => {
+                    audioChunks.push(event.data);
+                };
+
+                mediaRecorder.onstop = () => {
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                    // إرسال الملف فوراً
+                    uploadFile(audioBlob, 'audio');
+                };
+
+                mediaRecorder.start();
+                micBtn.classList.add('recording'); // تغيير اللون للأحمر (CSS)
+                micBtn.innerHTML = "🛑"; // تغيير الأيقونة
+            })
+            .catch(err => {
+                console.error("Mic Error:", err);
+                showError("Microphone access denied.");
+            });
+    }
+
+    function stopRecording(e) {
+        if(e) e.preventDefault();
+        
+        if (mediaRecorder && mediaRecorder.state !== "inactive") {
+            mediaRecorder.stop();
+            micBtn.classList.remove('recording');
+            micBtn.innerHTML = "🎤";
+        }
+    }
+
+    // دالة رفع موحدة (صورة أو صوت)
+    function uploadFile(file, type){
         const fd = new FormData();
-        fd.append('image', file);
+        // Django يتوقع 'image' أو 'audio'
+        fd.append(type, file, type === 'audio' ? 'voice_note.webm' : file.name); 
         fd.append('session_id', sessionId);
 
-        if(imageBtn) {
+        // تعطيل الأزرار أثناء الرفع
+        if(type === 'image' && imageBtn) {
             imageBtn.innerHTML="⏳";
             imageBtn.disabled=true;
+        } else if (type === 'audio' && micBtn) {
+            micBtn.innerHTML="⏳";
+            micBtn.disabled=true;
         }
 
         fetch(uploadUrl,{
@@ -245,22 +332,25 @@ function initChat(config) {
         })
         .then(data => {
             if(data.error) showError(data.error);
-            resetBtn();
+            resetBtns();
         })
         .catch(err => {
             console.error(err);
-            // 🛑 تعديل: لا تعرض رسالة فشل إذا كانت الصورة قد وصلت بالفعل
-            // هذا مجرد تحسين للعرض، ولكن الإصلاح الحقيقي في views.py
-            showError("Processing..."); 
-            resetBtn();
+            // في حالة الصوت، الرسالة "Processing..." ستظهر من السيرفر، فلا داعي للخطأ
+            // showError("Processing..."); 
+            resetBtns();
         });
     }
 
-    function resetBtn() {
+    function resetBtns() {
         if(imageBtn) {
             imageBtn.innerHTML="📎";
             imageBtn.disabled=false;
             imageInput.value="";
+        }
+        if(micBtn) {
+            micBtn.innerHTML="🎤";
+            micBtn.disabled=false;
         }
     }
 
@@ -273,6 +363,7 @@ function initChat(config) {
         }
     }
 
+    // --- Text Sending ---
     const submitBtn = document.querySelector('#chat-message-submit');
     const textInput = document.querySelector('#chat-message-input');
 
