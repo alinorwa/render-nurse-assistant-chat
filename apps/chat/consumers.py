@@ -113,7 +113,9 @@ class ChatConsumer(AsyncWebsocketConsumer):
                     'sender_id': user.id,
                     'text_original': saved_message.text_original,
                     'text_translated': saved_message.text_translated,
-                    'timestamp': str(saved_message.timestamp.strftime("%H:%M")),
+                    # 🛑 التعديل هنا: أرسل التاريخ كاملاً بصيغة ISO
+                    # القديم كان: str(saved_message.timestamp.strftime("%H:%M")),
+                    'timestamp': saved_message.timestamp.isoformat(), 
                     'is_read': False # نرسل الحالة الأولية
                 }
             )

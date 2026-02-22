@@ -1,6 +1,6 @@
 """
 Django settings for config project.
-Standard Production-Ready Configuration (Render + Azure).
+Standard Production-Ready Configuration (Render + Azure + Local Docker).
 """
 
 import os
@@ -11,10 +11,11 @@ from datetime import timedelta
 from django.templatetags.static import static
 from django.urls import reverse_lazy
 from django.utils.translation import gettext_lazy as _
-import dj_database_url # ⚠️ تأكد من إضافته في requirements.txt
+import dj_database_url 
 
 # 1. تهيئة البيئة
 env = environ.Env()
+# قراءة ملف .env إذا وجد (للتطوير المحلي)
 environ.Env.read_env(os.path.join(Path(__file__).resolve().parent.parent, '.env'))
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -23,19 +24,17 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # 🛡️ CORE SECURITY & ENVIRONMENT DETECTION
 # ==============================================================================
 
-# هل نحن في Azure؟
-IN_AZURE_DEPLOYMENT = env.bool('IN_AZURE_DEPLOYMENT', False)
 # هل نحن في Render؟ (Render يضيف هذا المتغير تلقائياً)
 IN_RENDER_DEPLOYMENT = env.bool('RENDER', False)
 
-DEBUG = env.bool('DJANGO_DEBUG', False)
+# تفعيل وضع التصحيح فقط إذا لم نكن في Render، أو إذا طلبنا ذلك صراحة
+DEBUG = env.bool('DJANGO_DEBUG', not IN_RENDER_DEPLOYMENT)
 
-SECRET_KEY = env('DJANGO_SECRET_KEY' )
+SECRET_KEY = env('DJANGO_SECRET_KEY')
 DB_ENCRYPTION_KEY = env('DB_ENCRYPTION_KEY')
 
-print("ENCRYPTION KEY LOADED:", bool(DB_ENCRYPTION_KEY))
-
-ALLOWED_HOSTS = ["*"] # Render يدير النطاقات، * مقبولة أو ضع نطاقك الخاص
+# السماح لجميع النطاقات (Render يدير الـ Routing، ومحلياً نحتاج localhost)
+ALLOWED_HOSTS = ["*"]
 
 # ==============================================================================
 # 🌐 INTERNATIONALIZATION
@@ -50,21 +49,25 @@ USE_TZ = True
 # ==============================================================================
 
 INSTALLED_APPS = [
-    'daphne',
+    'daphne', # يجب أن يكون في البداية
+    
     "unfold",
     "unfold.contrib.filters",
     "unfold.contrib.forms",
     "unfold.contrib.import_export",
+
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    
     'channels',
     'csp',
     'axes',
     'import_export',
+    
     'apps.accounts',
     'apps.chat',
     'apps.core',
@@ -72,7 +75,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
-    "whitenoise.middleware.WhiteNoiseMiddleware", # ⚠️ مهم جداً لـ Render
+    "whitenoise.middleware.WhiteNoiseMiddleware", # أساسي لـ Render
     "csp.middleware.CSPMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -92,19 +95,21 @@ ASGI_APPLICATION = 'config.asgi.application'
 # ==============================================================================
 
 if IN_RENDER_DEPLOYMENT:
-    # إعدادات قاعدة بيانات Render
+    # --- إعدادات Render (Production) ---
+    # يأخذ الإعدادات تلقائياً من DATABASE_URL الموجود في Render Dashboard
     DATABASES = {
-        'default': dj_database_url.config(conn_max_age=600)
+        'default': dj_database_url.config(conn_max_age=600, ssl_require=False)
     }
 else:
-    # إعدادات التطوير المحلي أو Azure القديم
+    # --- إعدادات Local (Docker) ---
+    # يأخذ الإعدادات من ملف .env المحلي
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.postgresql',
             'NAME': env('DB_NAME', default='camp_medical_db'),
-            'USER': env('DB_USER', default='postgres'),
-            'PASSWORD': env('DB_PASSWORD', default='postgres'), 
-            'HOST': env('DB_HOST', default='db'), # تم التعديل ليتناسب مع Docker
+            'USER': env('DB_USER'),
+            'PASSWORD': env('DB_PASSWORD'),
+            'HOST': env('DB_HOST', default='db'), # اسم الخدمة في docker-compose
             'PORT': env('DB_PORT', default='5432'),
         }
     }
@@ -113,19 +118,15 @@ else:
 # 🗄️ REDIS & CACHE
 # ==============================================================================
 
-REDIS_URL = env('REDIS_URL', default=None)
-
-# إصلاح SSL في Azure و Render
-if (IN_AZURE_DEPLOYMENT or IN_RENDER_DEPLOYMENT) and REDIS_URL and REDIS_URL.startswith('redis://'):
-    # Render Redis لا يحتاج SSL عادةً داخل الشبكة الخاصة، لكن هذا الكود آمن
-    pass 
+# في Render نأخذه من متغيرات البيئة، محلياً نأخذه من .env
+REDIS_URL = env('REDIS_URL', default='redis://redis:6379/0')
 
 if REDIS_URL:
     CHANNEL_LAYERS = {
         "default": {
             "BACKEND": "channels_redis.core.RedisChannelLayer",
             "CONFIG": {
-                "hosts": [REDIS_URL], # Render يعطيك الرابط كاملاً
+                "hosts": [REDIS_URL],
             },
         },
     }
@@ -136,30 +137,12 @@ if REDIS_URL:
             "LOCATION": REDIS_URL,
             "OPTIONS": {
                 "CLIENT_CLASS": "django_redis.client.DefaultClient",
-                # Render Redis (Internal) usually doesn't enforce SSL, removed strict SSL requirement
             }
         }
     }
     
     CELERY_BROKER_URL = REDIS_URL
     CELERY_RESULT_BACKEND = REDIS_URL
-else:
-    # Local
-    CHANNEL_LAYERS = {
-        "default": {
-            "BACKEND": "channels_redis.core.RedisChannelLayer",
-            "CONFIG": {"hosts": [("redis", 6379)]},
-        },
-    }
-    CACHES = {
-        "default": {
-            "BACKEND": "django_redis.cache.RedisCache",
-            "LOCATION": "redis://redis:6379/1",
-            "OPTIONS": {"CLIENT_CLASS": "django_redis.client.DefaultClient"}
-        }
-    }
-    CELERY_BROKER_URL = "redis://redis:6379/0"
-    CELERY_RESULT_BACKEND = "redis://redis:6379/0"
 
 # ==============================================================================
 # 🐇 CELERY SETTINGS
@@ -186,11 +169,19 @@ CELERY_BEAT_SCHEDULE = {
 # 🔒 AUTH & SECURITY
 # ==============================================================================
 AUTH_USER_MODEL = 'accounts.User'
+
 AUTHENTICATION_BACKENDS = [
     'axes.backends.AxesStandaloneBackend',
     'django.contrib.auth.backends.ModelBackend',
 ]
-# ... (Validation & Axes Settings same as before) ...
+
+AUTH_PASSWORD_VALIDATORS = [
+    {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
+    {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
+    {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
+    {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
+]
+
 AXES_FAILURE_LIMIT = 5          
 AXES_COOLOFF_TIME = timedelta(minutes=10)     
 AXES_RESET_ON_SUCCESS = True    
@@ -200,14 +191,17 @@ AXES_CLIENT_IP_CALLABLE = 'apps.core.utils.get_client_ip'
 LOGIN_URL = '/auth/login/'
 LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = '/auth/login/'
+
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
 # ==============================================================================
-# 🧠 AI SERVICES
+# 🧠 AI SERVICES (Azure)
 # ==============================================================================
+# هذه المفاتيح مطلوبة في البيئتين
 AZURE_TRANSLATOR_KEY = env('AZURE_TRANSLATOR_KEY', default='')
 AZURE_TRANSLATOR_ENDPOINT = env('AZURE_TRANSLATOR_ENDPOINT', default='')
 AZURE_TRANSLATOR_REGION = env('AZURE_TRANSLATOR_REGION', default='')
+
 AZURE_OPENAI_ENDPOINT = env('AZURE_OPENAI_ENDPOINT', default='')
 AZURE_OPENAI_KEY = env('AZURE_OPENAI_KEY', default='')
 AZURE_OPENAI_DEPLOYMENT_NAME = env('AZURE_OPENAI_DEPLOYMENT_NAME', default='gpt-4o')
@@ -219,8 +213,10 @@ STATIC_URL = 'static/'
 STATICFILES_DIRS = [BASE_DIR / 'static']
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
-# نستخدم Azure Blob للتخزين سواء كنا في Azure أو Render
-if IN_AZURE_DEPLOYMENT or IN_RENDER_DEPLOYMENT:
+# استراتيجية التخزين:
+# في Render: نستخدم Azure Blob Storage (لأن التخزين المحلي يختفي).
+# محلياً: نستخدم Local Storage (أسهل وأسرع)، إلا إذا أردت تجربة Azure.
+if IN_RENDER_DEPLOYMENT:
     STORAGES = {
         "default": {
             "BACKEND": "storages.backends.azure_storage.AzureStorage",
@@ -235,9 +231,9 @@ if IN_AZURE_DEPLOYMENT or IN_RENDER_DEPLOYMENT:
             "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
         },
     }
-    # تأكد من أن هذا المتغير موجود في Render Environment Variables
-    MEDIA_URL = f"https://{env('AZURE_STORAGE_ACCOUNT_NAME', default='campmedia')}.blob.core.windows.net/media/"
+    MEDIA_URL = f"https://{env('AZURE_STORAGE_ACCOUNT_NAME', default='')}.blob.core.windows.net/media/"
 else:
+    # Local
     STORAGES = {
         "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
         "staticfiles": {"BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"},
@@ -261,12 +257,77 @@ TEMPLATES = [
     },
 ]
 
+# Unfold Admin Theme
 UNFOLD = {
-    # ... (Unfold settings same as before) ...
     "SITE_TITLE": "Medical Support System",
     "SITE_HEADER": "Camp Administration",
     "SITE_URL": "/auth/login/",
-    # ...
+    "COLORS": {
+        "primary": {
+            "50": "240 253 250",
+            "100": "204 251 241",
+            "200": "153 246 228",
+            "300": "94 234 212",
+            "400": "45 212 191",
+            "500": "20 184 166",
+            "600": "13 148 136",
+            "700": "15 118 110",
+            "800": "17 94 89",
+            "900": "19 78 74",
+            "950": "4 47 46",
+        },
+    },
+    "SIDEBAR": {
+        "show_search": True,
+        "show_all_applications": True,
+        "navigation": [
+            {
+                "title": _("Overview"),
+                "separator": False,
+                "items": [
+                    {
+                        "title": _("Dashboard"),
+                        "icon": "dashboard",
+                        "link": reverse_lazy("custom_dashboard"),
+                    },
+                ],
+            },
+            {
+                "title": _("Medical Operations"),
+                "separator": True,
+                "items": [
+                    {
+                        "title": _("Live Chat"),
+                        "icon": "forum",
+                        "link": reverse_lazy("admin:chat_chatsession_changelist"),
+                        "permission": lambda request: request.user.is_staff,
+                    },
+                    {
+                        "title": _("Epidemic Alerts"),
+                        "icon": "coronavirus",
+                        "link": reverse_lazy("admin:chat_epidemicalert_changelist"),
+                    },
+                    {
+                        "title": _("Emergency Keywords"),
+                        "icon": "warning",
+                        "link": reverse_lazy("admin:chat_dangerkeyword_changelist"),
+                    },
+                ],
+            },
+             {
+                "title": _("Users & Staff"),
+                "separator": True,
+                "items": [
+                    {
+                        "title": _("Refugees & Nurses"),
+                        "icon": "group",
+                        "link": reverse_lazy("admin:accounts_user_changelist"),
+                    },
+                ],
+            },
+        ],
+    },
+    "STYLES": [lambda request: static("css/admin_sticky.css")],
 }
 
 # ==============================================================================
@@ -277,7 +338,8 @@ CSRF_TRUSTED_ORIGINS = env.list(
     default=[
         "http://localhost:8000",
         "http://127.0.0.1:8000",
-        "https://*.onrender.com", # 🛑 السماح لنطاقات Render
+        "http://0.0.0.0:8000",
+        "https://*.onrender.com", 
         "https://*.azurecontainerapps.io",
     ]
 )
@@ -289,17 +351,19 @@ CONTENT_SECURITY_POLICY = {
         "style-src": ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
         "font-src": ["'self'", "data:", "https://fonts.gstatic.com"],
         "img-src": ["'self'", "data:", "https://www.gravatar.com", "https://*.blob.core.windows.net"],
+        
         "connect-src": [
             "'self'",
             "ws://localhost:8000",
-            "wss://*.onrender.com", # 🛑 السماح للويب سوكيت في Render
+            "ws://127.0.0.1:8000",
+            "wss://*.onrender.com",
             "https://*.blob.core.windows.net",
             "https://*.openai.azure.com",
         ],
     }
 }
 
-if not DEBUG:
+if IN_RENDER_DEPLOYMENT:
     SECURE_SSL_REDIRECT = True
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True

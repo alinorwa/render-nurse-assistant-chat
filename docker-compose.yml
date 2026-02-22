@@ -5,9 +5,9 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data/
     environment:
-      - POSTGRES_DB=camp_db
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=${DB_NAME}      # سيقرأ camp_medical_db
+      - POSTGRES_USER=${DB_USER}    # سيقرأ postgres
+      - POSTGRES_PASSWORD=${DB_PASSWORD} # سيقرأ postgres
     ports:
       - "5432:5432" # لكي تستطيع الوصول لها من pgAdmin إذا أردت
 
