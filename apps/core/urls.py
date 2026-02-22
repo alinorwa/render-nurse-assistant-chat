@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import root_redirect_view, ServiceWorkerView, OfflineView
+from .views import robots_txt, root_redirect_view, ServiceWorkerView, OfflineView
 
 urlpatterns = [
     # الرابط الرئيسي يوجه للدالة الذكية
@@ -8,4 +8,5 @@ urlpatterns = [
     
     path('sw.js', ServiceWorkerView.as_view(), name='sw_js'),
     path('offline/', OfflineView.as_view(), name='offline'),
+     path("robots.txt", robots_txt),
 ]

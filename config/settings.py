@@ -377,3 +377,17 @@ CSRF_COOKIE_HTTPONLY = True
 X_FRAME_OPTIONS = 'DENY'
 SECURE_CONTENT_TYPE_NOSNIFF = True
 SECURE_BROWSER_XSS_FILTER = True
+
+
+
+
+
+# أضف هذا في نهاية settings.py للتشخيص
+import logging
+logger = logging.getLogger(__name__)
+
+# تشخيص مسارات القوالب
+for template_engine in TEMPLATES:
+    for loader in template_engine.get('DIRS', []):
+        logger.info(f"🔍 Template directory: {loader}")
+        logger.info(f"📁 Exists: {os.path.exists(loader)}")

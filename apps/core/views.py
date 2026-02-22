@@ -1,5 +1,6 @@
 from django.shortcuts import redirect, render
 from django.views.generic import TemplateView
+from django.http import HttpResponse
 
 def root_redirect_view(request):
     """
@@ -30,3 +31,16 @@ class ServiceWorkerView(TemplateView):
 
 class OfflineView(TemplateView):
     template_name = "offline.html"
+
+
+
+def robots_txt(request):
+    lines = [
+        "User-agent: *",
+        "Disallow: /admin/",
+        "Disallow: /chat/",      # 🛑 ممنوع أرشفة الشات
+        "Disallow: /accounts/",  # 🛑 ممنوع أرشفة صفحات الحسابات
+        "Allow: /",              # ✅ مسموح الصفحة الرئيسية
+        "Sitemap: https://camp-web.onrender.com/sitemap.xml",
+    ]
+    return HttpResponse("\n".join(lines), content_type="text/plain")
