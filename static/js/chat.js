@@ -144,36 +144,29 @@ function initChat(config) {
         return `${Y}-${M}-${D} / ${h}:${m}`;
     }
 
+    // 🛑 الدالة التي تم تعديلها لحل مشكلة اختفاء الصور
     function handleMessage(data){
         const msgId = data.is_pending ? data.id : `msg-${data.id}`;
-        
-        // 🛑 إذا كانت الرسالة موجودة (مثلاً حالة Processing)، نحدثها بدلاً من تجاهلها
         let div = document.getElementById(msgId);
-        if (div) {
-            // تحديث المحتوى (مثلاً تحول النص من Processing إلى النص الحقيقي)
-            const bodyDiv = div.querySelector('.msg-body');
-            if(bodyDiv) {
-                 let newBody = "";
-                 if(data.image_url) {
-                      // ... images ...
-                 } else {
-                     let text = "";
-                     if(String(data.sender_id) === currentUserId){
-                         text = data.text_original || "";
-                     } else {
-                         text = data.text_translated || data.text_original || "";
-                     }
-                     text = text.replace(/</g,"&lt;").replace(/>/g,"&gt;");
-                     newBody = text;
-                 }
-                 // فقط إذا تغير النص نقوم بالتحديث
-                 if(bodyDiv.innerHTML !== newBody) bodyDiv.innerHTML = newBody;
+
+        // 1. تحديد هل توجد صورة جديدة في البيانات القادمة؟
+        let imageUrl = data.image_url;
+
+        // 2. إذا لم يرسل السيرفر صورة، والرسالة موجودة أصلاً، نتحقق هل كانت تحتوي على صورة سابقاً؟
+        // (هذا يحدث عند وصول تحديث للترجمة بعد ثوانٍ من الرفع)
+        if (!imageUrl && div) {
+            const existingImg = div.querySelector('img.chat-image');
+            if (existingImg) {
+                imageUrl = existingImg.src; // نحتفظ بالرابط القديم
             }
-            return;
         }
 
-        div = document.createElement('div');
-        div.id = msgId;
+        // إنشاء العنصر إذا لم يكن موجوداً
+        if (!div) {
+            div = document.createElement('div');
+            div.id = msgId;
+            document.querySelector('#chat-log').appendChild(div);
+        }
 
         let msgClass = (String(data.sender_id) === currentUserId) ? "sent" : "received";
         if (data.is_pending) msgClass += " pending";
@@ -183,17 +176,26 @@ function initChat(config) {
             senderLabel = '<span class="sender-label">Nurse 👩‍⚕️</span>';
         }
 
+        // بناء المحتوى (صورة أو نص)
         let body = "";
-        if(data.image_url){
-            const url = data.image_url.includes('?') 
-                ? data.image_url 
-                : data.image_url + '?v=' + new Date().getTime();
-
+        if(imageUrl){
+            // نتأكد من وجود cache buster إذا لم يكن موجوداً
+            const url = imageUrl.includes('?') ? imageUrl : imageUrl + '?v=' + new Date().getTime();
+            
             body = `
-                <a href="${data.image_url}" target="_blank">
+                <a href="${imageUrl}" target="_blank">
                     <img src="${url}" class="chat-image">
                 </a>
             `;
+        } else if (data.audio_url) {
+             // إضافة دعم للصوتيات هنا أيضاً
+             body = `
+                <audio controls class="chat-audio">
+                    <source src="${data.audio_url}" type="audio/webm">
+                    Your browser does not support audio.
+                </audio>
+                <div style="font-size:0.8em; margin-top:5px;">${data.text_original || ""}</div>
+             `;
         } else {
             let text = "";
             if(String(data.sender_id) === currentUserId){
@@ -205,9 +207,7 @@ function initChat(config) {
             body = text;
         }
 
-        // نضع الجسم في div منفصل لسهولة التحديث لاحقاً
         const bodyHtml = `<div class="msg-body">${body}</div>`;
-
         const timeHtml = `<span class="time">${formatTime(data.timestamp)}</span>`;
         
         let tickHtml = '';
@@ -230,9 +230,10 @@ function initChat(config) {
             </div>
         `;
 
+        // تحديث الكلاس والمحتوى
         div.className = `message ${msgClass}`;
         div.innerHTML = senderLabel + bodyHtml + metaHtml;
-        document.querySelector('#chat-log').appendChild(div);
+        
         scrollToBottom();
     }
 
@@ -253,20 +254,17 @@ function initChat(config) {
 
     // --- Voice Recording Logic 🎙️ ---
     if(micBtn) {
-        // ضغط مستمر للبدء
         micBtn.onmousedown = startRecording;
-        micBtn.ontouchstart = startRecording; // للموبايل
-
-        // رفع الإصبع للإيقاف والإرسال
+        micBtn.ontouchstart = startRecording; 
         micBtn.onmouseup = stopRecording;
-        micBtn.ontouchend = stopRecording; // للموبايل
+        micBtn.ontouchend = stopRecording; 
     }
 
     function startRecording(e) {
-        if(e) e.preventDefault(); // منع تحديد النص
+        if(e) e.preventDefault(); 
         
         if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-            showError("Microphone not supported on this browser.");
+            showError("Microphone not supported.");
             return;
         }
 
@@ -281,13 +279,12 @@ function initChat(config) {
 
                 mediaRecorder.onstop = () => {
                     const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-                    // إرسال الملف فوراً
                     uploadFile(audioBlob, 'audio');
                 };
 
                 mediaRecorder.start();
-                micBtn.classList.add('recording'); // تغيير اللون للأحمر (CSS)
-                micBtn.innerHTML = "🛑"; // تغيير الأيقونة
+                micBtn.classList.add('recording'); 
+                micBtn.innerHTML = "🛑"; 
             })
             .catch(err => {
                 console.error("Mic Error:", err);
@@ -305,14 +302,11 @@ function initChat(config) {
         }
     }
 
-    // دالة رفع موحدة (صورة أو صوت)
     function uploadFile(file, type){
         const fd = new FormData();
-        // Django يتوقع 'image' أو 'audio'
         fd.append(type, file, type === 'audio' ? 'voice_note.webm' : file.name); 
         fd.append('session_id', sessionId);
 
-        // تعطيل الأزرار أثناء الرفع
         if(type === 'image' && imageBtn) {
             imageBtn.innerHTML="⏳";
             imageBtn.disabled=true;
@@ -336,8 +330,7 @@ function initChat(config) {
         })
         .catch(err => {
             console.error(err);
-            // في حالة الصوت، الرسالة "Processing..." ستظهر من السيرفر، فلا داعي للخطأ
-            // showError("Processing..."); 
+            showError("Processing..."); 
             resetBtns();
         });
     }
