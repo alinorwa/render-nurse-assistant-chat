@@ -192,7 +192,24 @@ LOGIN_URL = '/auth/login/'
 LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = '/auth/login/'
 
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+# ==============================================================================
+# 📧 EMAIL SETTINGS (Gmail SMTP)
+# ==============================================================================
+
+# إذا كنا في Render (افتراضياً) أو طلبنا ذلك صراحة في .env
+USE_REAL_EMAIL = env.bool('USE_REAL_EMAIL', default=IN_RENDER_DEPLOYMENT)
+
+if USE_REAL_EMAIL:
+    EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+    EMAIL_HOST = 'smtp.gmail.com'
+    EMAIL_PORT = 587
+    EMAIL_USE_TLS = True
+    EMAIL_HOST_USER = env('EMAIL_HOST_USER')
+    EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD')
+    DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+else:
+    # محلياً (إذا لم نحدد USE_REAL_EMAIL=True) تطبع في الكونسول
+    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
 # ==============================================================================
 # 🧠 AI SERVICES (Azure)
