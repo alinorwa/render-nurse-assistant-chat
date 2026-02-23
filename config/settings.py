@@ -193,14 +193,15 @@ LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = '/auth/login/'
 
 # ==============================================================================
-# 📧 EMAIL SETTINGS (Gmail SMTP)
+# 📧 EMAIL SETTINGS (Gmail SMTP - Force IPv4)
 # ==============================================================================
 
-# إذا كنا في Render (افتراضياً) أو طلبنا ذلك صراحة في .env
 USE_REAL_EMAIL = env.bool('USE_REAL_EMAIL', default=IN_RENDER_DEPLOYMENT)
 
 if USE_REAL_EMAIL:
-    EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+    # 🛑 التعديل هنا: نستخدم الباك إند المخصص الذي أنشأناه
+    EMAIL_BACKEND = 'apps.core.email_backend.IPv4EmailBackend'
+    
     EMAIL_HOST = 'smtp.gmail.com'
     EMAIL_PORT = 587
     EMAIL_USE_TLS = True
@@ -208,7 +209,6 @@ if USE_REAL_EMAIL:
     EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD')
     DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 else:
-    # محلياً (إذا لم نحدد USE_REAL_EMAIL=True) تطبع في الكونسول
     EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
 # ==============================================================================
