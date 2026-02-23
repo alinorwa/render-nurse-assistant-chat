@@ -193,20 +193,25 @@ LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = '/auth/login/'
 
 # ==============================================================================
-# 📧 EMAIL SETTINGS (Gmail SMTP - Force IPv4)
+# 📧 EMAIL SETTINGS (Gmail SMTP - Force IPv4 + SSL)
 # ==============================================================================
 
 USE_REAL_EMAIL = env.bool('USE_REAL_EMAIL', default=IN_RENDER_DEPLOYMENT)
 
 if USE_REAL_EMAIL:
-    # 🛑 التعديل هنا: نستخدم الباك إند المخصص الذي أنشأناه
+    # نستخدم نفس الباك إند المخصص الذي أنشأناه سابقاً (لحل مشكلة IPv6)
     EMAIL_BACKEND = 'apps.core.email_backend.IPv4EmailBackend'
     
     EMAIL_HOST = 'smtp.gmail.com'
-    EMAIL_PORT = 587
-    EMAIL_USE_TLS = True
-    EMAIL_HOST_USER = env('EMAIL_HOST_USER')
-    EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD')
+    
+    # 🛑 التغيير الجوهري هنا: نستخدم بورت SSL بدلاً من TLS
+    EMAIL_PORT = 465
+    EMAIL_USE_TLS = False  # نوقف TLS
+    EMAIL_USE_SSL = True   # نشغل SSL (أكثر توافقاً مع السيرفرات)
+    
+    EMAIL_HOST_USER = env('EMAIL_HOST_USER', default='')
+    EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD', default='')
+    
     DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 else:
     EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
