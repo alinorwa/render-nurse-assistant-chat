@@ -193,24 +193,27 @@ LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = '/auth/login/'
 
 # ==============================================================================
-# 📧 EMAIL SETTINGS (Gmail SMTP - Force IPv4 + SSL)
+# 📧 EMAIL SETTINGS (Gmail SMTP - Standard TLS)
 # ==============================================================================
 
 USE_REAL_EMAIL = env.bool('USE_REAL_EMAIL', default=IN_RENDER_DEPLOYMENT)
 
 if USE_REAL_EMAIL:
-    # نستخدم نفس الباك إند المخصص الذي أنشأناه سابقاً (لحل مشكلة IPv6)
+    # نستخدم الباك إند المخصص الذي يجبر النظام على IPv4 (ضروري جداً في Docker)
     EMAIL_BACKEND = 'apps.core.email_backend.IPv4EmailBackend'
     
     EMAIL_HOST = 'smtp.gmail.com'
     
-    # 🛑 التغيير الجوهري هنا: نستخدم بورت SSL بدلاً من TLS
-    EMAIL_PORT = 465
-    EMAIL_USE_TLS = False  # نوقف TLS
-    EMAIL_USE_SSL = True   # نشغل SSL (أكثر توافقاً مع السيرفرات)
+    # 🛑 نعود للمنفذ 587 لأنه الأنسب لـ Render مع Gmail
+    EMAIL_PORT = 587
+    EMAIL_USE_TLS = True   # تشفير TLS
+    EMAIL_USE_SSL = False  # نوقف SSL
     
     EMAIL_HOST_USER = env('EMAIL_HOST_USER', default='')
     EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD', default='')
+    
+    # 🛑 إضافة مهلة زمنية (Timeout) لتجنب الإغلاق المبكر
+    EMAIL_TIMEOUT = 30 
     
     DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 else:
