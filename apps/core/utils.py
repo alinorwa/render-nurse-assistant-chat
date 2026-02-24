@@ -1,17 +1,14 @@
+# apps/core/utils.py
+
 def get_client_ip(request):
     """
-    دالة مخصصة لجلب IP المستخدم الحقيقي خلف Docker/Proxy.
-    نستخدمها بدلاً من الاعتماد على إعدادات Axes المتغيرة.
-    Custom function to get real user IP behind Docker/Proxy.
-    Used instead of relying on variable Axes settings.
+    استخراج IP الحقيقي للمستخدم سواء كان محلياً أو خلف Render Load Balancer
     """
     x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
     if x_forwarded_for:
-        # في حال وجود عدة بروكسيات، العنوان الحقيقي هو الأول
-        # In case of multiple proxies, the real address is the first one
+        # في Render، العنوان الحقيقي هو الأول في القائمة
         ip = x_forwarded_for.split(',')[0].strip()
     else:
-        # إذا كان اتصالاً مباشراً
-        # If direct connection
+        # محلياً
         ip = request.META.get('REMOTE_ADDR')
     return ip
