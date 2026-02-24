@@ -35,7 +35,7 @@
                         <img src="{{ message.image.url }}?v={{ message.timestamp|date:'U' }}" class="chat-image">
                     </a>
                 {% else %}
-                    <!-- 🛑 تعديل للعرض: عرض النص سواء كان نصاً عادياً أو مفرغاً من صوت -->
+                    <!-- عرض النص -->
                     <div class="msg-body">
                         {% if message.sender == user %}
                             {{ message.text_original }}
@@ -65,20 +65,35 @@
 
     <div id="error-banner" style="display: none; background-color: #ffebee; color: #c62828; padding: 10px; text-align: center; border-top: 1px solid #ef9a9a; font-size: 0.9em; font-weight: bold;"></div>
 
-    <div class="chat-input-area" style="flex-direction: column; gap: 0;">
-        <div style="display: flex; width: 100%; gap: 10px; margin-bottom: 5px;">
-            <input type="file" id="image-input" accept="image/*" style="display: none;">
-            <button id="image-btn" title="Send image">📎</button>
-            
-            <!-- 🛑 زر المايكروفون -->
-            <button id="mic-btn" class="mic-button" title="Hold to Record">🎤</button>
-
-            <input id="chat-message-input" type="text" placeholder="Write your message here..." style="flex: 1; padding: 10px; border-radius: 20px; border: 1px solid #ccc;">
-            <button id="chat-message-submit" class="btn-primary" style="margin: 0; padding: 0 20px; border-radius: 20px;">➤</button>
+    <!-- منطقة الإدخال المعدلة -->
+    <div class="chat-input-area">
+        
+        <!-- الصف الأول: النص وزر الإرسال -->
+        <div class="input-main-row">
+            <input id="chat-message-input" type="text" placeholder="Write your message here..." autocomplete="off">
+            <button id="chat-message-submit" class="btn-primary">➤</button>
         </div>
 
-        <div style="text-align: center; font-size: 0.75rem; color: #eb6d07; padding-bottom: 5px;">
-            {{ privacy_warning }}
+        <!-- الصف الثاني: الأدوات (صور وصوت) -->
+        <div class="input-tools-row">
+            <input type="file" id="image-input" accept="image/*" style="display: none;">
+            
+            <button id="image-btn" title="Send image">📎</button>
+            <button id="mic-btn" class="mic-button" title="Hold to Record">🎤</button>
+            
+            <!-- مساحة فارغة أو رسالة الخصوصية بجانب الأدوات -->
+            <div class="privacy-text">
+                {{ privacy_warning }}
+            </div>
+        </div>
+
+    </div>
+
+     <!-- 🛑 كود الـ Overlay الجديد (أضفه في نهاية الملف) -->
+    <div id="recording-overlay" class="recording-overlay">
+        <div class="recording-content">
+            <div class="mic-large-icon">🎙️</div> <!-- أو 🎤 -->
+            <p class="recording-hint">Recording... Release to send</p>
         </div>
     </div>
 </div>

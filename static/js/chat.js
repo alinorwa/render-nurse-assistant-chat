@@ -387,6 +387,77 @@ function initChat(config) {
         if(log) log.scrollTop = log.scrollHeight;
     }
 
+
+    // ... (داخل دالة initChat)
+
+    // تعريف عنصر الـ Overlay
+    const recordingOverlay = document.getElementById('recording-overlay');
+
+    // --- Voice Recording Logic 🎙️ ---
+    if(micBtn) {
+        micBtn.onmousedown = startRecording;
+        micBtn.ontouchstart = startRecording; 
+        
+        // نستخدم window لضمان التوقف حتى لو رفع يده خارج الزر
+        window.onmouseup = stopRecording;
+        window.ontouchend = stopRecording;
+    }
+
+    function startRecording(e) {
+        // نمنع الحدث الافتراضي فقط إذا كان لمس (لتجنب مشاكل الماوس)
+        if(e.type === 'touchstart') e.preventDefault();
+        
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            showError("Microphone not supported.");
+            return;
+        }
+
+        navigator.mediaDevices.getUserMedia({ audio: true })
+            .then(stream => {
+                mediaRecorder = new MediaRecorder(stream);
+                audioChunks = [];
+
+                mediaRecorder.ondataavailable = event => {
+                    audioChunks.push(event.data);
+                };
+
+                mediaRecorder.onstop = () => {
+                    // نتحقق إذا كان هناك بيانات صوتية (لتجنب النقرات السريعة جداً)
+                    if (audioChunks.length > 0) {
+                        const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                        uploadFile(audioBlob, 'audio');
+                    }
+                };
+
+                mediaRecorder.start();
+                
+                // 🛑 إظهار الشاشة السوداء والأيقونة الخضراء
+                if(recordingOverlay) {
+                    recordingOverlay.style.display = 'flex';
+                }
+                
+            })
+            .catch(err => {
+                console.error("Mic Error:", err);
+                showError("Microphone access denied.");
+            });
+    }
+
+    function stopRecording(e) {
+        // 🛑 إخفاء الشاشة السوداء
+        if(recordingOverlay) {
+            recordingOverlay.style.display = 'none';
+        }
+
+        if (mediaRecorder && mediaRecorder.state !== "inactive") {
+            mediaRecorder.stop();
+            // إيقاف تدفق المايكروفون لإطفاء ضوء التسجيل في المتصفح
+            mediaRecorder.stream.getTracks().forEach(track => track.stop());
+        }
+    }
+
+    // ... (باقي الكود كما هو)
+
     loadInitialPending();
     connect();
     scrollToBottom();
