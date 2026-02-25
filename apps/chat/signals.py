@@ -6,6 +6,11 @@ from .models import Message, ChatSession
 from .tasks import process_message_ai
 from .services.triage_service import TriageService
 
+import os
+from django.db.models.signals import post_delete
+
+
+
 @receiver(post_save, sender=Message)
 def message_post_save(sender, instance, created, **kwargs):
     """
@@ -55,4 +60,28 @@ def message_post_save(sender, instance, created, **kwargs):
     if refugee_needs_processing or nurse_needs_translation:
         # نستخدم on_commit لضمان أن البيانات حُفظت قبل أن يبدأ الـ Worker
         # Use on_commit to ensure data is saved before Worker starts
-        transaction.on_commit(lambda: process_message_ai.delay(str(instance.id)))
+        transaction.on_commit(lambda: process_message_ai.delay(str(instance.id))) 
+
+
+
+@receiver(post_delete, sender=Message)
+def auto_delete_file_on_delete(sender, instance, **kwargs):
+    """
+    حذف الملفات من Azure (أو Local) عند حذف سجل الرسالة من قاعدة البيانات.
+    Deletes file from filesystem/Azure when corresponding `Message` object is deleted.
+    """
+    
+    # 1. حذف الصورة إن وجدت
+    if instance.image:
+        try:
+            # save=False ضروري لعدم محاولة تحديث الموديل المحذوف
+            instance.image.delete(save=False) 
+        except Exception as e:
+            print(f"Error deleting image file: {e}")
+
+    # 2. حذف الصوت إن وجد
+    if instance.audio:
+        try:
+            instance.audio.delete(save=False)
+        except Exception as e:
+            print(f"Error deleting audio file: {e}")

@@ -13,14 +13,29 @@
             <strong>Conversation with the nurse</strong>
             <span class="status-dot">● connected</span>
         </div>
-        
+         <div style="display: flex; gap: 10px; align-items: center;">
+            <form action="{% url 'delete_account' %}" method="post" onsubmit="return confirm('⚠️ Are you sure you want to delete your account permanently?\n\nThis action cannot be undone and all your medical history will be lost.');" style="margin: 0;">
+                {% csrf_token %}
+                <button type="submit" class="btn-delete-account" title="Delete my account">
+                    🗑️ Delete Account
+                </button>
+            </form>
+
+
+
+
         <form action="{% url 'logout' %}" method="post" style="margin: 0;">
             {% csrf_token %}
             <button type="submit" style="background: none; border: 1px solid #dc3545; color: #dc3545; padding: 5px 10px; border-radius: 5px; cursor: pointer; font-size: 0.8em;">
                 Logout
             </button>
         </form>
+
+        </div>
     </div>
+
+
+
 
     <div id="chat-log">
         {% for message in chat_messages %}

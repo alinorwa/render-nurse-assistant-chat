@@ -281,3 +281,42 @@
         box-shadow: 0 0 0 0 rgba(40, 167, 69, 0);
     }
 }
+
+
+
+/* زر الخروج (تحسين التصميم القديم) */
+.btn-logout {
+    background: none; 
+    border: 1px solid #6c757d; 
+    color: #6c757d; 
+    padding: 5px 10px; 
+    border-radius: 5px; 
+    cursor: pointer; 
+    font-size: 0.8em;
+    transition: all 0.2s;
+}
+
+.btn-logout:hover {
+    background-color: #6c757d;
+    color: white;
+}
+
+/* 🛑 تنسيق زر الحذف (أحمر وخطير) */
+.btn-delete-account {
+    background: none;
+    border: 1px solid #dc3545; /* إطار أحمر */
+    color: #dc3545;
+    padding: 5px 10px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.8em;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.btn-delete-account:hover {
+    background-color: #dc3545;
+    color: white;
+}
