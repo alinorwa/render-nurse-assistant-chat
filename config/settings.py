@@ -391,7 +391,12 @@ CONTENT_SECURITY_POLICY = {
         "script-src": ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://cdn.jsdelivr.net"],
         "style-src": ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
         "font-src": ["'self'", "data:", "https://fonts.gstatic.com"],
-        "img-src": ["'self'", "data:", "https://www.gravatar.com", "https://*.blob.core.windows.net"],
+        # "img-src": ["'self'", "data:", "https://www.gravatar.com", "https://*.blob.core.windows.net"],
+         "media-src": [
+            "'self'", 
+            "https://*.blob.core.windows.net",  # السماح بتشغيل الصوت من Azure
+            "data:",                            # السماح ببيانات الصوت الخام (أحياناً نحتاجها)
+        ],
         
         "connect-src": [
             "'self'",
