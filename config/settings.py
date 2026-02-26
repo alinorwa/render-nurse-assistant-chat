@@ -372,8 +372,10 @@ UNFOLD = {
 }
 
 # ==============================================================================
-# 👮 CSP & Security
+# 👮 CSP & Security (Correct Configuration for django-csp)
 # ==============================================================================
+
+# السماح للنطاقات الحقيقية (CSRF)
 CSRF_TRUSTED_ORIGINS = env.list(
     'CSRF_TRUSTED_ORIGINS',
     default=[
@@ -385,30 +387,60 @@ CSRF_TRUSTED_ORIGINS = env.list(
     ]
 )
 
-CONTENT_SECURITY_POLICY = {
-    "DIRECTIVES": {
-        "default-src": ["'self'"],
-        "script-src": ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://cdn.jsdelivr.net"],
-        "style-src": ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
-        "font-src": ["'self'", "data:", "https://fonts.gstatic.com"],
-        # "img-src": ["'self'", "data:", "https://www.gravatar.com", "https://*.blob.core.windows.net"],
-         "media-src": [
-            "'self'", 
-            "https://*.blob.core.windows.net",  # السماح بتشغيل الصوت من Azure
-            "data:",                            # السماح ببيانات الصوت الخام (أحياناً نحتاجها)
-        ],
-        
-        "connect-src": [
-            "'self'",
-            "ws://localhost:8000",
-            "ws://127.0.0.1:8000",
-            "wss://*.onrender.com",
-            "https://*.blob.core.windows.net",
-            "https://*.openai.azure.com",
-        ],
-    }
-}
+# 🛑 استبدال القاموس القديم بهذه المتغيرات المنفصلة
+# Replace the old dictionary with these individual variables
 
+# 1. المصدر الافتراضي (نفس السيرفر)
+CSP_DEFAULT_SRC = ("'self'",)
+
+# 2. الجافاسكريبت (نسمح بـ CDN وملفاتنا)
+CSP_SCRIPT_SRC = (
+    "'self'", 
+    "'unsafe-inline'", 
+    "'unsafe-eval'", 
+    "https://cdn.jsdelivr.net"
+)
+
+# 3. التصميم (CSS) والخطوط
+CSP_STYLE_SRC = (
+    "'self'", 
+    "'unsafe-inline'", 
+    "https://fonts.googleapis.com"
+)
+CSP_FONT_SRC = (
+    "'self'", 
+    "data:", 
+    "https://fonts.gstatic.com"
+)
+
+# 4. 🛑 الصور (الحل لمشكلتك الحالية)
+CSP_IMG_SRC = (
+    "'self'", 
+    "data:", 
+    "https://www.gravatar.com", 
+    "https://*.blob.core.windows.net", # السماح لصور Azure
+    "https://campmedia2026.blob.core.windows.net", # تحديد الرابط بدقة لزيادة الأمان
+)
+
+# 5. 🛑 الصوت والفيديو (الحل لمشكلة الصوت السابقة)
+CSP_MEDIA_SRC = (
+    "'self'", 
+    "data:", 
+    "https://*.blob.core.windows.net", # السماح لصوت Azure
+    "https://campmedia2026.blob.core.windows.net",
+)
+
+# 6. الاتصال (WebSockets & AJAX)
+CSP_CONNECT_SRC = (
+    "'self'",
+    "ws://localhost:8000",
+    "ws://127.0.0.1:8000",
+    "wss://*.onrender.com",          # للويب سوكيت في Render
+    "https://*.blob.core.windows.net", # لرفع الملفات
+    "https://*.openai.azure.com",    # للذكاء الاصطناعي
+)
+
+# إعدادات الأمان الأخرى (كما هي)
 if IN_RENDER_DEPLOYMENT:
     SECURE_SSL_REDIRECT = True
     SESSION_COOKIE_SECURE = True
@@ -423,7 +455,6 @@ CSRF_COOKIE_HTTPONLY = True
 X_FRAME_OPTIONS = 'DENY'
 SECURE_CONTENT_TYPE_NOSNIFF = True
 SECURE_BROWSER_XSS_FILTER = True
-
 
 
 
