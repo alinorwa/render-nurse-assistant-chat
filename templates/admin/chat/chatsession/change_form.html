@@ -1,0 +1,11 @@
+{% extends "admin/change_form.html" %}
+
+{% block content %}
+    <!-- 🛑 نضع البيانات هنا لضمان تحميلها داخل جسم الصفحة -->
+    <script id="canned-responses-data" type="application/json">
+        {{ canned_responses_json|safe }}
+    </script>
+
+    <!-- استدعاء المحتوى الأصلي لـ Unfold -->
+    {{ block.super }}
+{% endblock %}

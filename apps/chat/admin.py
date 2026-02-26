@@ -1,7 +1,9 @@
+import json
+
 from django.contrib import admin
 from django.template.loader import render_to_string
 from django.utils.html import mark_safe , format_html
-from .models import ChatSession, Message, TranslationCache, DangerKeyword, EpidemicAlert, ImageAnalysisCache
+from .models import ChatSession, Message, TranslationCache, DangerKeyword, EpidemicAlert, ImageAnalysisCache , CannedResponse
 from unfold.admin import ModelAdmin, TabularInline
 from .services.notification_service import NotificationService
 from import_export.admin import ImportExportModelAdmin
@@ -123,7 +125,16 @@ class MessageInline(TabularInline):
     class Media:
         css = {'all': ('css/admin_chat_clean.css',)}
 
-
+# =========================================================
+# 🛑 تسجيل الردود الجاهزة
+# =========================================================
+@admin.register(CannedResponse)
+class CannedResponseAdmin(ModelAdmin):
+    list_display = ('preview_text',)
+    search_fields = ('text',)
+    
+    def preview_text(self, obj):
+        return obj.text[:50] + "..." if len(obj.text) > 50 else obj.text
 
 # =========================================================
 # 3. إعدادات جلسة المحادثة (التعديل الرئيسي هنا)
@@ -133,6 +144,8 @@ class ChatSessionAdmin(ModelAdmin, ImportExportModelAdmin):
     resource_class = ChatSessionResource
     import_form_class = ImportForm
     export_form_class = ExportForm
+     # 🛑 1. أضف هذا السطر لإجبار استخدام القالب الخاص بنا
+    change_form_template = "admin/chat/chatsession/change_form.html"
     
     # إضافة زر التصدير للقائمة الخارجية
     list_display = ('priority_badge', 'health_id', 'refugee_name', 'last_activity', 'export_action_button')
@@ -215,6 +228,18 @@ class ChatSessionAdmin(ModelAdmin, ImportExportModelAdmin):
     def health_id(self, obj): return obj.refugee.username
     def refugee_name(self, obj): return obj.refugee.full_name
 
+    # 🛑 التعديل الجديد والمهم هنا: تمرير الردود للصفحة
+    def change_view(self, request, object_id, form_url='', extra_context=None):
+        extra_context = extra_context or {}
+        
+        # نجلب كل الردود الجاهزة
+        responses = CannedResponse.objects.all().values('text')
+        
+        # نحولها لـ JSON لنستخدمها في الجافاسكريبت
+        extra_context['canned_responses_json'] = json.dumps(list(responses))
+        
+        return super().change_view(request, object_id, form_url, extra_context)
+
     def save_formset(self, request, form, formset, change):
         instances = formset.save(commit=False)
         for obj in formset.deleted_objects: obj.delete()
@@ -227,6 +252,9 @@ class ChatSessionAdmin(ModelAdmin, ImportExportModelAdmin):
     
     class Media:
         js = ('js/admin_realtime.js',)
+        css = {
+            'all': ('css/admin_chat_clean.css',) 
+        }
 # =========================================================
 # 3. باقي المودلز
 # =========================================================

@@ -186,31 +186,22 @@ AUTH_PASSWORD_VALIDATORS = [
 # 🔒 AXES SECURITY SETTINGS
 # ==============================================================================
 
-# 1. عدد المحاولات ووقت الحظر
+# 1. القواعد الأساسية
 AXES_FAILURE_LIMIT = 5
 AXES_COOLOFF_TIME = timedelta(minutes=1)
-
-# 2. ماذا يحدث بعد النجاح أو الفشل
-AXES_RESET_ON_SUCCESS = True  # تصفير العداد عند الدخول الصحيح
+AXES_RESET_ON_SUCCESS = True
 AXES_LOCKOUT_TEMPLATE = 'accounts/lockout.html'
 
-# 3. تحديد هوية المستخدم (الحل لمشكلة Render)
+# 2. الهوية (لحل مشكلة Render)
 AXES_CLIENT_IP_CALLABLE = 'apps.core.utils.get_client_ip'
-
-# 🛑 هام: تفعيل الحظر بناءً على اسم المستخدم + IP
-AXES_LOCK_OUT_BY_COMBINATION_USER_AND_IP = True
-
-# 4. ❌ تعطيل User Agent (هذا هو المهم!)
-AXES_USE_USER_AGENT = False  # ❌ غير من True إلى False
-
-# 5. استخدام قاعدة البيانات للتخزين
 AXES_HANDLER = 'axes.handlers.database.AxesDatabaseHandler'
 
-# 6. إضافة إعداد مهم: متى ينتهي الحظر
-AXES_COOLOFF_TIME = timedelta(minutes=1)  # دقيقة واحدة كما تريد
+# 3. 🛑 هذا السطر هو البديل الحديث والآمن لحلك السابق
+# عدم وجود "user_agent" في هذه القائمة يعني AXES_USE_USER_AGENT = False
+# ووجود "ip" و "username" معاً يعني AXES_LOCK_OUT_BY_COMBINATION... = True
+AXES_LOCKOUT_PARAMETERS = ["ip_address", "username"]
 
-# 7. إعداد إضافي لضمان عمل reset
-AXES_ONLY_USER_FAILURES = True  # احتساب المحاولات للمستخدم فقط
+
 
 
 LOGIN_URL = '/auth/login/'

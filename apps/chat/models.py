@@ -167,3 +167,11 @@ class ImageAnalysisCache(models.Model):
 
     def __str__(self):
         return f"Image Hash: {self.image_hash[:10]}..."
+
+
+
+class CannedResponse(models.Model):
+    text = models.TextField(verbose_name="Message Content")
+    
+    def __str__(self):
+        return self.text[:50] + '...'
