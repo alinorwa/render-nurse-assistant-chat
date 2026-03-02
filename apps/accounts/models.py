@@ -109,7 +109,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     role = models.CharField(max_length=10, choices=Role.choices, default=Role.REFUGEE)
     
     native_language = models.CharField(
-        max_length=5, 
+        max_length=25, 
         choices=LANGUAGE_CHOICES, 
         default='en',
         verbose_name=_("Native Language")
