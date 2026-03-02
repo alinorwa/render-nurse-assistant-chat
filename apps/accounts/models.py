@@ -51,23 +51,43 @@ class User(AbstractBaseUser, PermissionsMixin):
         REFUGEE = "REFUGEE", "Refugee"
 
     LANGUAGE_CHOICES = [
-          ('en', 'English'),
-         ('uk', 'Ukrainian'),
-        ('ar', 'Arabic'),
-         ("es", "Spanish"),
-         ("so", "Somali"),
-        ("ti", "Tigrinya"),
-        ("zh", "Chinese"),
-        ("ru", "Russian"),
-        ("ps", "Pashto"),
-        ("am", "Amharic"),
-        ('ps', 'Pashto'),
-         ("ku", "Kurdish"),
-        ("fa", "Farsi"),
-        
-        # النرويجية للممرضين
-        # Norwegian for nurses
+        # --- اللغات الأساسية / Host & Global ---
         ('no', 'Norwegian'),
+        ('en', 'English'),
+        ('fr', 'French'),       # مهمة جداً لغرب أفريقيا (الكونغو، تشاد..)
+        ('es', 'Spanish'),
+         ('uk', 'Ukrainian'),
+       
+
+        # --- الشرق الأوسط وآسيا / Middle East & Asia ---
+        ('ar', 'Arabic'),
+        ('tr', 'Turkish'),
+        ('fa', 'Persian (Farsi)'),
+         ('ru', 'Russian'),
+        ('ps', 'Pashto'),       # أفغانستان
+        ('prs', 'Dari'),        # أفغانستان (مهمة جداً ومدعومة في Azure)
+        ('ur', 'Urdu'),         # باكستان
+        ('ku', 'Kurdish (Kurmanji)'), # شمال كردستان (سوريا/تركيا)
+        ('ckb', 'Kurdish (Sorani)'),  # جنوب كردستان (العراق/إيران) - Azure يدعمها
+        ('bn', 'Bengali'),
+        ('zh-Hans', 'Chinese Simplified'),
+        ('vi', 'Vietnamese'),
+        ('th', 'Thai'),
+
+        # --- أفريقيا / Africa ---
+        ('so', 'Somali'),
+        ('ti', 'Tigrinya'),     # إريتريا / إثيوبيا
+        ('am', 'Amharic'),      # إثيوبيا
+        ('om', 'Oromo'),        # إثيوبيا (قومية الأورومو)
+        ('sw', 'Swahili'),      # شرق أفريقيا
+
+        # --- أوروبا الشرقية / Eastern Europe ---
+       
+        ('pl', 'Polish'),
+        ('sr-Latn', 'Serbian (Latin)'),
+        ('bs', 'Bosnian'),
+        ('hr', 'Croatian'),
+        ('sq', 'Albanian'),
     ]
 
     # الحقل الموحد (Primary Identifier)

@@ -75,25 +75,28 @@ class MessageInline(TabularInline):
         # 🛑 التصحيح: حذفنا النص الفارغ "" من القائمة
         IGNORED_TEXTS = [
             "[Image Sent]", "[Image from App]", "[bilde sendt]", 
-            "[Image Sent from App]", "Sent a photo", "sendte et bilde"
+            "[Image Sent from App]", "Sent a photo", "sendte et bilde" ,
+              "🎤 Processing audio...", 
+            "🎤 Behandler lyd...",  # <--- هذا هو الحل للمشكلة الحالية
+            "🎤 Behandler lyd",     # بدون نقاط احتياطاً
+            "Processing..."
         ]
         
-        # 1. تجهيز النص المترجم (للاجئ)
+        # 1. تجهيز النص المترجم
         text_translated = None
         if obj.text_translated:
             clean_text = obj.text_translated.strip()
-            # نعرض النص فقط إذا لم يكن في قائمة التجاهل
+            # إذا كان النص المترجم هو "Behandler lyd"، سيتجاهله الكود الآن وينتقل للأصل
             if clean_text and clean_text not in IGNORED_TEXTS:
                 text_translated = clean_text
 
-        # 2. تجهيز النص الأصلي (للممرض)
+        # 2. تجهيز النص الأصلي (هنا سيظهر النص المفرغ من Whisper)
         text_original = None
         if obj.text_original:
             clean_text = obj.text_original.strip()
             if clean_text and clean_text not in IGNORED_TEXTS:
                 text_original = clean_text
 
-        # استدعاء القالب (Template)
         return render_to_string('admin/chat/content.html', {
             'role': obj.sender.role if obj.sender_id else '',
             'text_original': text_original,
@@ -148,7 +151,7 @@ class ChatSessionAdmin(ModelAdmin, ImportExportModelAdmin):
     change_form_template = "admin/chat/chatsession/change_form.html"
     
     # إضافة زر التصدير للقائمة الخارجية
-    list_display = ('priority_badge', 'health_id', 'refugee_name', 'last_activity', 'export_action_button')
+    list_display = ( 'unread_messages_badge', 'priority_badge', 'health_id', 'refugee_name', 'last_activity', 'export_action_button')
     list_filter = ('priority', 'is_active', 'start_time')
     inlines = [MessageInline]
     list_fullwidth = True
@@ -165,6 +168,52 @@ class ChatSessionAdmin(ModelAdmin, ImportExportModelAdmin):
     
     # جعل الزر للقراءة فقط ليظهر
     readonly_fields = ('export_session_btn',)
+
+    # 🛑 2. دالة حساب الرسائل غير المقروءة
+    # apps/chat/admin.py
+
+    def unread_messages_badge(self, obj):
+        # 1. حساب الرسائل غير المقروءة القادمة من اللاجئ
+        unread_count = obj.messages.filter(is_read=False, sender=obj.refugee).count()
+        
+        # 2. تحديد الألوان والنص بناءً على العدد
+        if unread_count > 0:
+            # حالة وجود رسائل جديدة (أحمر)
+            bg_color = "#ef4444" 
+            text_content = f"{unread_count} New"
+            icon = "📩"
+        else:
+            # حالة لا توجد رسائل (أخضر وصفر)
+            bg_color = "#10b981" 
+            text_content = "0 New"
+            icon = "✔"
+
+        # 3. عرض الشارة (Badge)
+        return format_html(
+            '''
+            <div style="
+                background-color: {};
+                color: white;
+                border-radius: 20px;
+                padding: 4px 12px;
+                font-size: 0.85rem;
+                font-weight: bold;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+                min-width: 80px; /* عرض ثابت لجمالية القائمة */
+            ">
+                <span style="margin-right: 6px;">{}</span> {}
+            </div>
+            ''',
+            bg_color,
+            icon,
+            text_content
+        )
+    
+    unread_messages_badge.short_description = "Inbox Status"
+    unread_messages_badge.admin_order_field = 'last_activity'
 
     # --- دالة رسم زر التصدير داخل الجلسة ---
     def export_session_btn(self, obj):
@@ -231,6 +280,15 @@ class ChatSessionAdmin(ModelAdmin, ImportExportModelAdmin):
     # 🛑 التعديل الجديد والمهم هنا: تمرير الردود للصفحة
     def change_view(self, request, object_id, form_url='', extra_context=None):
         extra_context = extra_context or {}
+
+         # 1. 🛑 المنطق الجديد: تحديث حالة القراءة فور دخول الصفحة
+        # بمجرد فتح الصفحة، نعتبر أن الممرض قرأ الرسائل
+        try:
+            session = ChatSession.objects.get(pk=object_id)
+            # تحديث كل رسائل اللاجئ غير المقروءة لتصبح مقروءة
+            session.messages.filter(sender=session.refugee, is_read=False).update(is_read=True)
+        except ChatSession.DoesNotExist:
+            pass
         
         # نجلب كل الردود الجاهزة
         responses = CannedResponse.objects.all().values('text')

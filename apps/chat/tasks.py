@@ -109,10 +109,15 @@ def transcribe_voice_note(message_id):
 # ==============================================================================
 
 @shared_task
-def process_message_ai(message_id):
+def process_message_ai(message_id, override_text=None):
     try:
         # جلب الرسالة مع البيانات المرتبطة
         message = Message.objects.select_related('session', 'sender', 'session__refugee').get(id=message_id)
+        
+        # 🛑 تعديل 1: إذا وصلنا نص جديد (من مهمة الصوت)، نعتمد عليه فوراً
+        if override_text:
+            message.text_original = override_text
+
         fields_to_update = []
         is_urgent_detected = False
 
@@ -120,32 +125,39 @@ def process_message_ai(message_id):
         if message.image:
             compressed = ImageService.compress_image(message.image)
             if compressed:
+                import os # تأكد من استيراد os
                 filename = os.path.basename(message.image.name)
                 filename = os.path.splitext(filename)[0] + '.jpg'
                 message.image.save(filename, compressed, save=False)
                 fields_to_update.append('image')
 
         # 2. الترجمة (للصوت المفرغ أو النص العادي)
-        if message.text_original and not message.text_translated:
-            translator = AzureTranslator()
-            
-            if message.sender.role == 'REFUGEE':
-                target_lang = 'no'
-            else:
-                target_lang = message.session.refugee.native_language
+        # 🛑 تعديل 2: نترجم فقط إذا كان النص حقيقياً وليس نص انتظار
+        if message.text_original:
+            # قائمة الكلمات التي يجب تجاهلها وعدم ترجمتها
+            ignored_phrases = ["Processing", "Behandler", "🎤"]
+            is_placeholder = any(word in message.text_original for word in ignored_phrases)
 
-            translation = translator.translate(
-                message.text_original, 
-                message.language_code or 'en', 
-                target_lang
-            )
-            
-            message.text_translated = translation
-            fields_to_update.append('text_translated')
+            if not is_placeholder and not message.text_translated:
+                translator = AzureTranslator()
+                
+                if message.sender.role == 'REFUGEE':
+                    target_lang = 'no'
+                else:
+                    target_lang = message.session.refugee.native_language
 
-            if message.sender.role == 'REFUGEE':
-                if TriageService.check_for_danger(translation):
-                    is_urgent_detected = True
+                translation = translator.translate(
+                    message.text_original, 
+                    message.language_code or 'en', 
+                    target_lang
+                )
+                
+                message.text_translated = translation
+                fields_to_update.append('text_translated')
+
+                if message.sender.role == 'REFUGEE':
+                    if TriageService.check_for_danger(translation):
+                        is_urgent_detected = True
 
         # 3. تحليل الصورة
         if message.image and not message.ai_analysis:

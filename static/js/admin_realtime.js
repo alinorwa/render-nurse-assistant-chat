@@ -1,31 +1,13 @@
-
+/* static/js/admin_realtime.js */
 
 document.addEventListener('DOMContentLoaded', function() {
     
     // =========================================================
-    // 1. منطق التنبيهات (Notification Logic)
+    // 1. منطق الردود الجاهزة (Canned Responses) - فقط
     // =========================================================
-    const pathParts = window.location.pathname.split('/');
-    const sessionId = pathParts.find(part => part.length > 20 && part.includes('-')); // بحث أذكى عن UUID
-
-    if (sessionId) {
-        const protocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
-        const socketUrl = protocol + window.location.host + '/ws/chat/' + sessionId + '/';
-        
-        console.log("Admin Connecting to:", socketUrl);
-        
-        try {
-            const chatSocket = new WebSocket(socketUrl);
-            // ... (كود التنبيهات كما هو، اختصرته هنا للتركيز على المشكلة) ...
-        } catch (e) {
-            console.log("WebSocket connection failed", e);
-        }
-    }
-
-     // =========================================================
-    // 2. منطق الردود الجاهزة (Canned Responses) - مخصص لـ Unfold
-    // =========================================================
-   const dataScript = document.getElementById('canned-responses-data');
+    // تم إزالة منطق التنبيهات (WebSockets Notification Bar) بناءً على الطلب
+    
+    const dataScript = document.getElementById('canned-responses-data');
     
     if (!dataScript) return;
 
@@ -33,43 +15,37 @@ document.addEventListener('DOMContentLoaded', function() {
     try {
         cannedResponses = JSON.parse(dataScript.textContent);
     } catch (e) {
-        console.error(e);
+        console.error("Error parsing JSON:", e);
         return;
     }
+
     function injectQuickReplyButton() {
-        // 1. البحث عن كل مناطق الكتابة
+        // البحث عن حقول النص
         const allTextAreas = document.querySelectorAll('textarea[name*="text_original"]');
-        
         if (allTextAreas.length === 0) return;
 
-        // 2. التصفية: استبعاد القالب المخفي (__prefix__)
+        // استبعاد القوالب المخفية
         const visibleTextAreas = Array.from(allTextAreas).filter(area => {
             return !area.name.includes('__prefix__') && !area.id.includes('__prefix__');
         });
 
         if (visibleTextAreas.length === 0) return;
 
-        // 3. نأخذ الأخير (السطر الفارغ الجديد)
+        // الحقل المستهدف (الأخير)
         const targetTextArea = visibleTextAreas[visibleTextAreas.length - 1];
-        
-        // نتأكد أننا لم نضف الزر له مسبقاً
-        if (targetTextArea.dataset.hasQuickReply) return;
-        
-        console.log("✅ Found REAL target textarea:", targetTextArea.name);
+        if (targetTextArea.dataset.hasQuickReply) return; // تم الحقن مسبقاً
 
-        // 4. 🛑 التعديل الجذري هنا: نستخدم الأب المباشر فقط لتجنب الخطأ
+        // الحاوية الأم
         const parent = targetTextArea.parentNode;
         
-        // إنشاء الحاوية والأزرار
+        // إنشاء حاوية الزر
         const toolsContainer = document.createElement('div');
         toolsContainer.style.cssText = "margin-top: 8px; margin-bottom: 8px; display: flex; align-items: center;";
 
+        // زر فتح القائمة
         const quickReplyBtn = document.createElement('button');
         quickReplyBtn.type = "button";
         quickReplyBtn.innerHTML = `<span style="margin-right:5px;">⚡</span> Choose an answer`;
-        quickReplyBtn.className = "bg-primary-600 text-white hover:bg-primary-700"; // Unfold classes if available
-        
-        // ستايل احتياطي لضمان المظهر
         quickReplyBtn.style.cssText = `
             background-color: #ebf5ff; 
             color: #1d4ed8; 
@@ -81,10 +57,12 @@ document.addEventListener('DOMContentLoaded', function() {
             cursor: pointer;
             display: inline-flex;
             align-items: center;
+            transition: background-color 0.2s;
         `;
         
-        // إنشاء القائمة (Dropdown)
+        // القائمة المنسدلة
         const dropdown = document.createElement('div');
+        dropdown.id = "canned-responses-dropdown";
         dropdown.style.cssText = `
             position: absolute;
             background-color: white;
@@ -115,34 +93,28 @@ document.addEventListener('DOMContentLoaded', function() {
                 item.addEventListener('click', (e) => {
                     e.stopPropagation();
                     targetTextArea.value = resp.text;
-                    // تفعيل الأحداث ليعرف جانغو أن النص تغير
                     targetTextArea.dispatchEvent(new Event('input', { bubbles: true }));
                     targetTextArea.dispatchEvent(new Event('change', { bubbles: true }));
-                    
                     targetTextArea.focus();
                     dropdown.style.display = "none";
-                    
+                    targetTextArea.style.transition = "background-color 0.3s";
                     targetTextArea.style.backgroundColor = "#dcfce7";
                     setTimeout(() => targetTextArea.style.backgroundColor = "", 500);
                 });
                 
                 item.onmouseover = () => item.style.backgroundColor = "#f9fafb";
                 item.onmouseout = () => item.style.backgroundColor = "white";
-                
                 dropdown.appendChild(item);
             });
         } else {
             dropdown.innerHTML = "<div style='padding:10px; color:#999; font-size:0.8em;'>No responses found.</div>";
         }
 
-        // تشغيل القائمة (حساب الموقع بدقة)
+        // تشغيل القائمة
         quickReplyBtn.addEventListener('click', (e) => {
             e.preventDefault();
             e.stopPropagation();
-            
-            // نغلق أي قوائم أخرى
-            document.querySelectorAll('div[id^="canned-dropdown"]').forEach(d => d.style.display = 'none');
-
+            document.querySelectorAll('div[id^="canned-responses-dropdown"]').forEach(d => d.style.display = 'none');
             const rect = quickReplyBtn.getBoundingClientRect();
             dropdown.style.top = (window.scrollY + rect.bottom + 5) + "px";
             dropdown.style.left = (window.scrollX + rect.left) + "px";
@@ -151,37 +123,18 @@ document.addEventListener('DOMContentLoaded', function() {
 
         document.addEventListener('click', () => dropdown.style.display = "none");
 
-        // 5. الإضافة إلى DOM (بأمان تام)
-        // نستخدم parentNode الذي جلبناه في الخطوة 4
+        // إضافة للـ DOM
         if (parent) {
-            // نضع الحاوية قبل الـ textarea
             parent.insertBefore(toolsContainer, targetTextArea);
             toolsContainer.appendChild(quickReplyBtn);
-            document.body.appendChild(dropdown); // القائمة تتبع body لتظهر فوق كل شيء
-            
+            document.body.appendChild(dropdown);
             targetTextArea.dataset.hasQuickReply = "true";
-        } else {
-            console.error("❌ Parent node not found for textarea");
         }
     }
-    // التشغيل الأولي
-    setTimeout(injectQuickReplyButton, 500); // تأخير بسيط لضمان تحميل Unfold
 
-    // مراقبة التغييرات (لأن Unfold قد يحمل العناصر ببطء)
-    const observer = new MutationObserver(() => {
-        injectQuickReplyButton();
-    });
-    
+    // التشغيل والمراقبة
+    setTimeout(injectQuickReplyButton, 500); 
+    const observer = new MutationObserver(() => { injectQuickReplyButton(); });
     const adminContent = document.querySelector('#content-main') || document.body;
-    observer.observe(adminContent, { childList: true, subtree: true });
+    if (adminContent) { observer.observe(adminContent, { childList: true, subtree: true }); }
 });
-
-// إضافة Animation للتنبيه العلوي
-const style = document.createElement('style');
-style.innerHTML = `
-    @keyframes slideDown {
-        from { top: -50px; opacity: 0; }
-        to { top: 10px; opacity: 1; }
-    }
-`;
-document.head.appendChild(style);
