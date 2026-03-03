@@ -13,6 +13,8 @@ from apps.core.services import AzureTranslator
 # 🛑 استيراد المهام
 from .tasks import transcribe_voice_note, process_message_ai
 
+
+
 @login_required
 def chat_room(request):
     user = request.user

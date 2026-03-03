@@ -80,29 +80,31 @@
 
     <div id="error-banner" style="display: none; background-color: #ffebee; color: #c62828; padding: 10px; text-align: center; border-top: 1px solid #ef9a9a; font-size: 0.9em; font-weight: bold;"></div>
 
-    <!-- منطقة الإدخال المعدلة -->
-    <div class="chat-input-area">
-        
-        <!-- الصف الأول: النص وزر الإرسال -->
-        <div class="input-main-row">
-            <input id="chat-message-input" type="text" placeholder="Write your message here..." autocomplete="off">
-            <button id="chat-message-submit" class="btn-primary">➤</button>
-        </div>
+     <!-- منطقة الإدخال المعدلة -->
+<div class="chat-input-area">
+    
+    <!-- الصف الأول: حقل النص وزر الإرسال -->
+    <div class="input-main-row">
+        <input id="chat-message-input" type="text" placeholder="Write your message here..." autocomplete="off">
+        <button id="chat-message-submit" class="btn-primary">➤</button>
+    </div>
 
-        <!-- الصف الثاني: الأدوات (صور وصوت) -->
-        <div class="input-tools-row">
+    <!-- الصف الثاني: الحاوية الجديدة للأدوات ونص التنبيه -->
+    <div class="input-footer-container">
+        <!-- الأيقونات في المنتصف -->
+        <div class="input-tools-row-centered">
             <input type="file" id="image-input" accept="image/*" style="display: none;">
-            
             <button id="image-btn" title="Send image">📎</button>
             <button id="mic-btn" class="mic-button" title="Hold to Record">🎤</button>
-            
-            <!-- مساحة فارغة أو رسالة الخصوصية بجانب الأدوات -->
-            <div class="privacy-text">
-                {{ privacy_warning }}
-            </div>
         </div>
-
+        
+        <!-- نص التنبيه بالكامل أسفل الأيقونات -->
+        <div class="privacy-text-full">
+            🔒 {{ privacy_warning }}
+        </div>
     </div>
+</div>
+
 
      <!-- 🛑 كود الـ Overlay الجديد (أضفه في نهاية الملف) -->
     <div id="recording-overlay" class="recording-overlay">

@@ -11,6 +11,8 @@ from unfold.contrib.import_export.forms import ExportForm, ImportForm
 from .resources import ChatSessionResource , SessionMessageResource
 from django.urls import path
 from django.http import HttpResponse
+from channels.layers import get_channel_layer  
+from asgiref.sync import async_to_sync
 
 # =========================================================
 # 1. إعدادات الأوبئة
@@ -286,7 +288,20 @@ class ChatSessionAdmin(ModelAdmin, ImportExportModelAdmin):
         try:
             session = ChatSession.objects.get(pk=object_id)
             # تحديث كل رسائل اللاجئ غير المقروءة لتصبح مقروءة
-            session.messages.filter(sender=session.refugee, is_read=False).update(is_read=True)
+             # 1. تحديث الرسائل في قاعدة البيانات (كما فعلنا سابقاً)
+            # نستخدم updated_count لنعرف هل كان هناك رسائل جديدة أم لا
+            updated_count = session.messages.filter(sender=session.refugee, is_read=False).update(is_read=True)
+            
+            # 2. 🛑 الإضافة الجديدة: إذا قمنا بتحديث رسائل، يجب إخبار اللاجئ فوراً عبر الويب سوكيت
+            if updated_count > 0:
+                channel_layer = get_channel_layer()
+                async_to_sync(channel_layer.group_send)(
+                    f'chat_{session.id}',  # اسم المجموعة
+                    {
+                        'type': 'read_receipt_event',  # نوع الحدث (يجب أن يطابق consumers.py)
+                        'reader_id': request.user.id
+                    }
+                )
         except ChatSession.DoesNotExist:
             pass
         

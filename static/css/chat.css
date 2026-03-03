@@ -178,15 +178,47 @@
 }
 
 /* نص الخصوصية بجانب الأدوات */
-.privacy-text {
-    margin-left: auto; /* دفع النص لليمين (أو اليسار حسب اللغة) */
-    font-size: 0.75rem;
-    color: #eb6d07;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 60%;
+/* تنسيق الحاوية السفلية */
+.input-footer-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center; /* سنتر جميع العناصر أفقياً */
+    gap: 8px;
+    width: 100%;
 }
+
+/* وضع الأيقونات في المنتصف */
+.input-tools-row-centered {
+    display: flex;
+    justify-content: center;
+    gap: 20px; /* مسافة بين أيقونة الصورة والمايك */
+}
+
+/* تنسيق نص التنبيه ليكون كاملاً وغير مقصوص */
+.privacy-text-full {
+    font-size: 0.85rem;
+    color: #e67e22; /* لون برتقالي/أصفر غامق للوضوح */
+    text-align: center;
+    width: 100%;
+    word-wrap: break-word; /* لضمان نزول النص لسطر جديد إذا كان طويلاً */
+    white-space: normal;  /* منع النص من البقاء على سطر واحد وقصه */
+    padding: 0 10px;
+}
+
+/* تعديل أزرار الأيقونات لتكون متناسقة */
+#image-btn, .mic-button {
+    width: 45px;
+    height: 45px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #eee;
+    background-color: #f8f9fa;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
 
 /* --- تنسيق الصور داخل الشات --- */
 .chat-image {

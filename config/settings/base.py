@@ -279,6 +279,12 @@ UNFOLD = {
                         "link": reverse_lazy("admin:chat_translationcache_changelist"),
                         "permission": lambda request: request.user.is_staff,
                     },
+                    {
+                        "title": _("System Configuration"),
+                        "icon": "cleaning_services",
+                        "link": reverse_lazy("admin:core_systemsetting_changelist"),
+                        "permission": lambda request: request.user.is_staff,
+                    },
                 ],
             },
 

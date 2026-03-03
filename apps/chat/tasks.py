@@ -15,6 +15,7 @@ from .services.triage_service import TriageService
 from .services.notification_service import NotificationService
 from apps.core.services import AzureTranslator
 from apps.core.vision_analysis import MedicalImageAnalyzer
+from apps.core.models import SystemSetting
 
 logger = logging.getLogger(__name__)
 
@@ -241,26 +242,50 @@ def check_epidemic_outbreak():
 
 @shared_task
 def delete_old_data():
-    cutoff_date = timezone.now() - timedelta(days=14) # تم تصحيحها لـ 14 يوماً كما هو مطلوب
+    """
+    تنظيف رسائل المحادثات القديمة فقط (GDPR) لتقليل المساحة وحماية الخصوصية.
+    يتم الاحتفاظ بالكاش (الترجمة والتحليل) لتوفير تكاليف Azure API.
+    """
     
+    # 1. جلب إعدادات المدة من قاعدة البيانات
+    settings_obj = SystemSetting.objects.first()
+    days_to_keep = settings_obj.retention_days if settings_obj else 14
+    
+    # تحديد تاريخ القص
+    cutoff_date = timezone.now() - timedelta(days=days_to_keep)
+    
+    logger.info(f"🧹 Starting GDPR Cleanup for Messages older than {days_to_keep} days...")
+
+    # ---------------------------------------------------------
+    # حذف الرسائل وملفاتها (Messages & Media) - هذا ضروري لـ GDPR
+    # ---------------------------------------------------------
     old_messages = Message.objects.filter(timestamp__lt=cutoff_date)
+    msg_count = 0
     
-    count = 0
     for msg in old_messages:
+        # حذف الصورة من Azure Blob لتقليل تكلفة التخزين
         if msg.image:
             try:
                 msg.image.delete(save=False)
             except Exception as e:
-                logger.error(f"Error deleting image file for msg {msg.id}: {e}")
+                logger.error(f"Error deleting image for msg {msg.id}: {e}")
         
-        if msg.audio: # إضافة حذف ملفات الصوت أيضاً
+        # حذف الصوت من Azure Blob
+        if msg.audio:
             try:
                 msg.audio.delete(save=False)
             except Exception as e:
-                logger.error(f"Error deleting audio file for msg {msg.id}: {e}")
+                logger.error(f"Error deleting audio for msg {msg.id}: {e}")
 
+        # حذف سجل الرسالة نفسه من قاعدة البيانات
         msg.delete()
-        count += 1
+        msg_count += 1
 
-    if count > 0:
-        logger.info(f"🧹 GDPR Cleanup: Deleted {count} old messages.")
+    # 🛑 تم إزالة قسم حذف الكاش (TranslationCache & ImageAnalysisCache)
+    # لتقليل تكاليف Azure Translator & Vision API
+
+    # ---------------------------------------------------------
+    # التقرير النهائي
+    # ---------------------------------------------------------
+    logger.info(f"✅ GDPR Cleanup Complete: Deleted {msg_count} old messages and their media files.")
+    
