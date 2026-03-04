@@ -7,13 +7,11 @@ from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 import time
 import traceback
+from django.utils import timezone
 
 from .models import ChatSession, Message
 from apps.core.services import AzureTranslator 
-# 🛑 استيراد المهام
 from .tasks import transcribe_voice_note, process_message_ai
-
-
 
 @login_required
 def chat_room(request):
@@ -22,7 +20,7 @@ def chat_room(request):
         return redirect('admin:index')
     
     base_warning = "🔒 For your privacy, do not write your name or health ID here. We identify you automatically."
-    base_limit_msg = "⚠️ Limit reached: You can only send up to 7 images."
+    base_limit_msg = "⚠️ Limit reached: You can only send up to 7 images per day."
 
     privacy_warning = base_warning 
     limit_error_msg = base_limit_msg
@@ -31,20 +29,22 @@ def chat_room(request):
         try:
             translator = AzureTranslator()
             privacy_warning = translator.translate(base_warning, 'en', user.native_language)
-             # ترجمة رسالة الخطأ (الجديد)
+            # ترجمة رسالة الخطأ
             limit_error_msg = translator.translate(base_limit_msg, 'en', user.native_language)
         except:
             pass
 
     session, created = ChatSession.objects.get_or_create(refugee=user)
-    # حساب عدد الصور
-    current_image_count = session.messages.exclude(image='').count()
+    
+    # 🛑 حساب عدد صور "اليوم فقط"
+    today = timezone.now().date()
+    current_image_count = session.messages.filter(timestamp__date=today).exclude(image='').count()
     
     return render(request, 'chat/room.html', {
         'session': session,
         'chat_messages': session.messages.all(),
-        'privacy_warning': privacy_warning ,
-        'limit_error_msg': limit_error_msg, # 🛑 نرسل الرسالة المترجمة
+        'privacy_warning': privacy_warning,
+        'limit_error_msg': limit_error_msg,
         'image_count': current_image_count,
     })
 
@@ -65,46 +65,43 @@ def upload_image(request):
         session = ChatSession.objects.get(id=session_id)
         if session.refugee != user and session.nurse != user:
              return JsonResponse({'error': 'Unauthorized'}, status=403)
-         # =========================================================
-        # 🛑 الإضافة الجديدة: التحقق من عدد الصور (7 صور كحد أقصى)
-        # =========================================================
+
+        # 🛑 التحقق من الحد اليومي (7 صور)
         if image_file:
-            # نحسب عدد الصور الموجودة في هذه الجلسة
-            current_images = Message.objects.filter(
-                session=session
+            today = timezone.now().date()
+            current_images_today = Message.objects.filter(
+                session=session,
+                timestamp__date=today
             ).exclude(image='').count()
 
-            if current_images >= 7:
-                return JsonResponse({
-                    'error': 'Limit reached: You can only send up to 7 images.'
-                }, status=400)
-        # =========================================================     
+            if current_images_today >= 7:
+                # الرسالة هنا بالإنجليزية كاحتياط، لكن الجافاسكريبت سيعرض الرسالة المترجمة التي مررناها له
+                return JsonResponse({'error': 'Limit reached: You can only send up to 7 images per day.'}, status=400)
 
         with transaction.atomic():
             message = Message(session=session, sender=user)
             
-            # معالجة الصورة
             if image_file:
                 message.image = image_file
                 message.text_original = "[Image Sent]"
             
-            # معالجة الصوت
             if audio_file:
                 message.audio = audio_file
-                # نص مؤقت حتى ينتهي التحليل
                 if not message.text_original:
                     message.text_original = "🎤 Processing audio..." 
 
             message.save() 
 
-            # تجهيز الرابط
+            # 🛑 تحسين: تجهيز الرابط مرة واحدة لاستخدامه في الويب سوكيت وفي الرد
             file_url = ""
+            timestamp_suffix = f"?v={int(time.time())}"
+            
             if message.image:
-                file_url = f"{message.image.url}?v={int(time.time())}"
+                file_url = f"{message.image.url}{timestamp_suffix}"
             elif message.audio:
-                file_url = f"{message.audio.url}?v={int(time.time())}"
+                file_url = f"{message.audio.url}{timestamp_suffix}"
 
-            # إشعار الويب سوكيت الفوري
+            # إشعار الويب سوكيت
             def send_ws():
                 try:
                     channel_layer = get_channel_layer()
@@ -134,14 +131,13 @@ def upload_image(request):
 
             transaction.on_commit(send_ws)
 
-            # 🛑 تشغيل المهام الخلفية
+            # تشغيل المهام الخلفية
             if audio_file:
-                # إذا كان صوتاً، نحوله لنص أولاً (ثم هو سيستدعي الترجمة لاحقاً)
                 transaction.on_commit(lambda: transcribe_voice_note.delay(message.id))
             elif image_file:
-                # إذا كانت صورة، نعالجها مباشرة
                 transaction.on_commit(lambda: process_message_ai.delay(message.id))
 
+        # 🛑 نرجع الرابط مع الـ timestamp لضمان ظهور الصورة فوراً
         return JsonResponse({'status': 'success', 'url': file_url})
 
     except Exception as e:
