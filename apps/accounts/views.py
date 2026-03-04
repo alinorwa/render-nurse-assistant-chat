@@ -41,7 +41,9 @@ class CustomLoginView(LoginView):
             self.request.session.set_expiry(0)
         else:
             # إذا وضع صح: الجلسة تستمر أسبوعين (أو حسب إعدادات SESSION_COOKIE_AGE)
-            self.request.session.set_expiry(1209600) # 14 يوماً
+            self.request.session.set_expiry(2592000) # 30 يوم
+            #self.request.session.set_expiry(1209600) # 14 يوماً
+            
             
         return super().form_valid(form) 
 

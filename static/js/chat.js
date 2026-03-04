@@ -7,6 +7,12 @@ function initChat(config) {
     const csrfToken = config.csrfToken;
     const uploadUrl = config.uploadUrl;
     
+    // إعدادات العداد والرسائل المترجمة
+    let currentImageCount = config.initialImageCount || 0;
+    const LIMIT_ERROR_MSG = config.limitErrorMsg || "Limit reached: You can only send up to 7 images.";
+    const MAX_IMAGES = 7;
+    const counterDisplay = document.getElementById('img-counter');
+
     const STORAGE_KEY = `offline_queue_${sessionId}`;
 
     let chatSocket = null;
@@ -16,6 +22,7 @@ function initChat(config) {
     let mediaRecorder = null;
     let audioChunks = [];
     const micBtn = document.getElementById('mic-btn');
+    const recordingOverlay = document.getElementById('recording-overlay');
 
     function connect() {
         const protocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
@@ -78,7 +85,6 @@ function initChat(config) {
     function processOfflineQueue() {
         const queue = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
         if (queue.length > 0 && chatSocket.readyState === WebSocket.OPEN) {
-            console.log(`Sending ${queue.length} offline messages...`);
             queue.forEach(msgText => {
                 chatSocket.send(JSON.stringify({message: msgText}));
             });
@@ -126,47 +132,63 @@ function initChat(config) {
 
     function formatTime(isoString){
         if(!isoString) return "";
-        
         const d = new Date(isoString);
-        if (isNaN(d.getTime())) {
-            if(isoString.includes(':') && isoString.length === 5) {
-                const today = new Date();
-                return `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')} / ${isoString}`;
-            }
-            return ""; 
-        }
-
-        const Y = d.getFullYear();
-        const M = String(d.getMonth()+1).padStart(2,'0');
-        const D = String(d.getDate()).padStart(2,'0');
-        const h = String(d.getHours()).padStart(2,'0');
-        const m = String(d.getMinutes()).padStart(2,'0');
-        return `${Y}-${M}-${D} / ${h}:${m}`;
+        if (isNaN(d.getTime())) return "";
+        return d.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
     }
 
-    // 🛑 الدالة التي تم تعديلها لحل مشكلة اختفاء الصور
     function handleMessage(data){
         const msgId = data.is_pending ? data.id : `msg-${data.id}`;
         let div = document.getElementById(msgId);
 
-        // 1. تحديد هل توجد صورة جديدة في البيانات القادمة؟
-        let imageUrl = data.image_url;
+        // بناء المحتوى (Body)
+        let bodyContent = "";
+        
+        if (data.audio_url) {
+            // التحقق من حالة المعالجة
+            const isProcessing = data.text_original && (data.text_original.includes("Processing") || data.text_original.includes("Behandler") || data.text_original.includes("🎤"));
+            const displayText = isProcessing ? '<span style="color:#888; font-style:italic;">⏳ ...</span>' : data.text_original;
 
-        // 2. إذا لم يرسل السيرفر صورة، والرسالة موجودة أصلاً، نتحقق هل كانت تحتوي على صورة سابقاً؟
-        // (هذا يحدث عند وصول تحديث للترجمة بعد ثوانٍ من الرفع)
-        if (!imageUrl && div) {
-            const existingImg = div.querySelector('img.chat-image');
-            if (existingImg) {
-                imageUrl = existingImg.src; // نحتفظ بالرابط القديم
+            bodyContent = `
+                <audio controls class="chat-audio" style="max-width: 100%; margin-bottom: 5px;">
+                    <source src="${data.audio_url}" type="audio/webm">
+                    Your browser does not support audio.
+                </audio>
+                <div class="audio-text" style="font-size:0.9em; line-height:1.4; color:#333; white-space: pre-wrap;">${displayText}</div>
+            `;
+        } else if (data.image_url) {
+            const url = data.image_url.includes('?') ? data.image_url : data.image_url + '?v=' + new Date().getTime();
+            bodyContent = `
+                <a href="${data.image_url}" target="_blank">
+                    <img src="${url}" class="chat-image">
+                </a>
+            `;
+        } else {
+            let text = "";
+            if(String(data.sender_id) === currentUserId){
+                text = data.text_original || "";
+            } else {
+                text = data.text_translated || data.text_original || "";
             }
+            text = text.replace(/</g,"&lt;").replace(/>/g,"&gt;");
+            bodyContent = `<div class="msg-text">${text}</div>`;
         }
 
-        // إنشاء العنصر إذا لم يكن موجوداً
-        if (!div) {
-            div = document.createElement('div');
-            div.id = msgId;
-            document.querySelector('#chat-log').appendChild(div);
+        // تحديث إذا كانت الرسالة موجودة (مثل تحديث النص بعد التحليل)
+        if (div) {
+            const msgBody = div.querySelector('.msg-body');
+            if (msgBody) {
+                // نحدث فقط إذا تغير المحتوى (لتجنب وميض مشغل الصوت)
+                if (msgBody.innerHTML !== bodyContent) {
+                     msgBody.innerHTML = bodyContent;
+                }
+            }
+            return;
         }
+
+        // إنشاء جديد
+        div = document.createElement('div');
+        div.id = msgId;
 
         let msgClass = (String(data.sender_id) === currentUserId) ? "sent" : "received";
         if (data.is_pending) msgClass += " pending";
@@ -176,38 +198,7 @@ function initChat(config) {
             senderLabel = '<span class="sender-label">Nurse 👩‍⚕️</span>';
         }
 
-        // بناء المحتوى (صورة أو نص)
-        let body = "";
-        if(imageUrl){
-            // نتأكد من وجود cache buster إذا لم يكن موجوداً
-            const url = imageUrl.includes('?') ? imageUrl : imageUrl + '?v=' + new Date().getTime();
-            
-            body = `
-                <a href="${imageUrl}" target="_blank">
-                    <img src="${url}" class="chat-image">
-                </a>
-            `;
-        } else if (data.audio_url) {
-             // إضافة دعم للصوتيات هنا أيضاً
-             body = `
-                <audio controls class="chat-audio">
-                    <source src="${data.audio_url}" type="audio/webm">
-                    Your browser does not support audio.
-                </audio>
-                <div style="font-size:0.8em; margin-top:5px;">${data.text_original || ""}</div>
-             `;
-        } else {
-            let text = "";
-            if(String(data.sender_id) === currentUserId){
-                text = data.text_original || "";
-            } else {
-                text = data.text_translated || data.text_original || "";
-            }
-            text = text.replace(/</g,"&lt;").replace(/>/g,"&gt;");
-            body = text;
-        }
-
-        const bodyHtml = `<div class="msg-body">${body}</div>`;
+        const bodyHtml = `<div class="msg-body">${bodyContent}</div>`;
         const timeHtml = `<span class="time">${formatTime(data.timestamp)}</span>`;
         
         let tickHtml = '';
@@ -230,10 +221,9 @@ function initChat(config) {
             </div>
         `;
 
-        // تحديث الكلاس والمحتوى
         div.className = `message ${msgClass}`;
         div.innerHTML = senderLabel + bodyHtml + metaHtml;
-        
+        document.querySelector('#chat-log').appendChild(div);
         scrollToBottom();
     }
 
@@ -242,7 +232,22 @@ function initChat(config) {
     const imageInput = document.getElementById('image-input');
 
     if(imageBtn) {
-        imageBtn.onclick = () => imageInput.click();
+        imageBtn.onclick = () => {
+            // التحقق من العدد
+            if (currentImageCount >= MAX_IMAGES) {
+                showError(LIMIT_ERROR_MSG);
+                if(counterDisplay) {
+                    counterDisplay.style.color = "red";
+                    counterDisplay.style.fontWeight = "bold";
+                    setTimeout(() => {
+                        counterDisplay.style.color = "#666";
+                        counterDisplay.style.fontWeight = "normal";
+                    }, 2000);
+                }
+                return;
+            }
+            imageInput.click();
+        };
     }
 
     if(imageInput) {
@@ -252,16 +257,18 @@ function initChat(config) {
         };
     }
 
-    // --- Voice Recording Logic 🎙️ ---
+    // --- Voice Recording Logic (Unified & Fixed) ---
     if(micBtn) {
+        // دعم اللمس والماوس
         micBtn.onmousedown = startRecording;
         micBtn.ontouchstart = startRecording; 
-        micBtn.onmouseup = stopRecording;
-        micBtn.ontouchend = stopRecording; 
+        
+        window.onmouseup = stopRecording;
+        window.ontouchend = stopRecording;
     }
 
     function startRecording(e) {
-        if(e) e.preventDefault(); 
+        if(e.type === 'touchstart') e.preventDefault();
         
         if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
             showError("Microphone not supported.");
@@ -270,21 +277,34 @@ function initChat(config) {
 
         navigator.mediaDevices.getUserMedia({ audio: true })
             .then(stream => {
-                mediaRecorder = new MediaRecorder(stream);
+                let options = { mimeType: 'audio/webm' };
+                if (!MediaRecorder.isTypeSupported('audio/webm')) {
+                    options = { mimeType: 'audio/mp4' }; 
+                }
+
+                mediaRecorder = new MediaRecorder(stream, options);
                 audioChunks = [];
 
                 mediaRecorder.ondataavailable = event => {
-                    audioChunks.push(event.data);
+                    if (event.data.size > 0) audioChunks.push(event.data);
                 };
 
                 mediaRecorder.onstop = () => {
+                    if (audioChunks.length === 0) return;
                     const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-                    uploadFile(audioBlob, 'audio');
+                    // إرسال فقط إذا كان هناك صوت فعلي
+                    if (audioBlob.size > 1000) {
+                        uploadFile(audioBlob, 'audio');
+                    }
                 };
 
-                mediaRecorder.start();
-                micBtn.classList.add('recording'); 
-                micBtn.innerHTML = "🛑"; 
+                mediaRecorder.start(200); // تجميع كل 200ms
+                
+                // إظهار الشاشة السوداء
+                if(recordingOverlay) {
+                    recordingOverlay.style.display = 'flex';
+                }
+                micBtn.classList.add('recording');
             })
             .catch(err => {
                 console.error("Mic Error:", err);
@@ -293,12 +313,15 @@ function initChat(config) {
     }
 
     function stopRecording(e) {
-        if(e) e.preventDefault();
-        
+        // إخفاء الشاشة السوداء
+        if(recordingOverlay) {
+            recordingOverlay.style.display = 'none';
+        }
+        micBtn.classList.remove('recording');
+
         if (mediaRecorder && mediaRecorder.state !== "inactive") {
             mediaRecorder.stop();
-            micBtn.classList.remove('recording');
-            micBtn.innerHTML = "🎤";
+            mediaRecorder.stream.getTracks().forEach(track => track.stop());
         }
     }
 
@@ -307,12 +330,10 @@ function initChat(config) {
         fd.append(type, file, type === 'audio' ? 'voice_note.webm' : file.name); 
         fd.append('session_id', sessionId);
 
+        // تعطيل الأزرار أثناء الرفع
         if(type === 'image' && imageBtn) {
-            imageBtn.innerHTML="⏳";
             imageBtn.disabled=true;
-        } else if (type === 'audio' && micBtn) {
-            micBtn.innerHTML="⏳";
-            micBtn.disabled=true;
+            imageBtn.style.opacity = "0.5";
         }
 
         fetch(uploadUrl,{
@@ -321,29 +342,35 @@ function initChat(config) {
             body:fd
         })
         .then(r => {
-            if(!r.ok) throw new Error("Upload Failed");
+            if(!r.ok) return r.json().then(data => { throw new Error(data.error || "Upload Failed") });
             return r.json();
         })
         .then(data => {
-            if(data.error) showError(data.error);
+            if(data.error) {
+                showError(data.error);
+            } else {
+                if (type === 'image') {
+                    currentImageCount++;
+                    if(counterDisplay) counterDisplay.innerText = `${currentImageCount}/${MAX_IMAGES}`;
+                }
+            }
             resetBtns();
         })
         .catch(err => {
-            console.error(err);
-            showError("Processing..."); 
+            if (err.message.includes("Limit reached")) {
+                showError(err.message);
+            } else {
+               if(type !== 'audio') showError("Upload Failed"); 
+            }
             resetBtns();
         });
     }
 
     function resetBtns() {
         if(imageBtn) {
-            imageBtn.innerHTML="📎";
             imageBtn.disabled=false;
             imageInput.value="";
-        }
-        if(micBtn) {
-            micBtn.innerHTML="🎤";
-            micBtn.disabled=false;
+            imageBtn.style.opacity = "1";
         }
     }
 
@@ -386,77 +413,6 @@ function initChat(config) {
         const log = document.querySelector('#chat-log');
         if(log) log.scrollTop = log.scrollHeight;
     }
-
-
-    // ... (داخل دالة initChat)
-
-    // تعريف عنصر الـ Overlay
-    const recordingOverlay = document.getElementById('recording-overlay');
-
-    // --- Voice Recording Logic 🎙️ ---
-    if(micBtn) {
-        micBtn.onmousedown = startRecording;
-        micBtn.ontouchstart = startRecording; 
-        
-        // نستخدم window لضمان التوقف حتى لو رفع يده خارج الزر
-        window.onmouseup = stopRecording;
-        window.ontouchend = stopRecording;
-    }
-
-    function startRecording(e) {
-        // نمنع الحدث الافتراضي فقط إذا كان لمس (لتجنب مشاكل الماوس)
-        if(e.type === 'touchstart') e.preventDefault();
-        
-        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-            showError("Microphone not supported.");
-            return;
-        }
-
-        navigator.mediaDevices.getUserMedia({ audio: true })
-            .then(stream => {
-                mediaRecorder = new MediaRecorder(stream);
-                audioChunks = [];
-
-                mediaRecorder.ondataavailable = event => {
-                    audioChunks.push(event.data);
-                };
-
-                mediaRecorder.onstop = () => {
-                    // نتحقق إذا كان هناك بيانات صوتية (لتجنب النقرات السريعة جداً)
-                    if (audioChunks.length > 0) {
-                        const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-                        uploadFile(audioBlob, 'audio');
-                    }
-                };
-
-                mediaRecorder.start();
-                
-                // 🛑 إظهار الشاشة السوداء والأيقونة الخضراء
-                if(recordingOverlay) {
-                    recordingOverlay.style.display = 'flex';
-                }
-                
-            })
-            .catch(err => {
-                console.error("Mic Error:", err);
-                showError("Microphone access denied.");
-            });
-    }
-
-    function stopRecording(e) {
-        // 🛑 إخفاء الشاشة السوداء
-        if(recordingOverlay) {
-            recordingOverlay.style.display = 'none';
-        }
-
-        if (mediaRecorder && mediaRecorder.state !== "inactive") {
-            mediaRecorder.stop();
-            // إيقاف تدفق المايكروفون لإطفاء ضوء التسجيل في المتصفح
-            mediaRecorder.stream.getTracks().forEach(track => track.stop());
-        }
-    }
-
-    // ... (باقي الكود كما هو)
 
     loadInitialPending();
     connect();

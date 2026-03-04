@@ -22,21 +22,30 @@ def chat_room(request):
         return redirect('admin:index')
     
     base_warning = "🔒 For your privacy, do not write your name or health ID here. We identify you automatically."
+    base_limit_msg = "⚠️ Limit reached: You can only send up to 7 images."
+
     privacy_warning = base_warning 
+    limit_error_msg = base_limit_msg
 
     if user.native_language and user.native_language != 'en':
         try:
             translator = AzureTranslator()
             privacy_warning = translator.translate(base_warning, 'en', user.native_language)
+             # ترجمة رسالة الخطأ (الجديد)
+            limit_error_msg = translator.translate(base_limit_msg, 'en', user.native_language)
         except:
             pass
 
     session, created = ChatSession.objects.get_or_create(refugee=user)
+    # حساب عدد الصور
+    current_image_count = session.messages.exclude(image='').count()
     
     return render(request, 'chat/room.html', {
         'session': session,
         'chat_messages': session.messages.all(),
-        'privacy_warning': privacy_warning 
+        'privacy_warning': privacy_warning ,
+        'limit_error_msg': limit_error_msg, # 🛑 نرسل الرسالة المترجمة
+        'image_count': current_image_count,
     })
 
 
@@ -56,6 +65,20 @@ def upload_image(request):
         session = ChatSession.objects.get(id=session_id)
         if session.refugee != user and session.nurse != user:
              return JsonResponse({'error': 'Unauthorized'}, status=403)
+         # =========================================================
+        # 🛑 الإضافة الجديدة: التحقق من عدد الصور (7 صور كحد أقصى)
+        # =========================================================
+        if image_file:
+            # نحسب عدد الصور الموجودة في هذه الجلسة
+            current_images = Message.objects.filter(
+                session=session
+            ).exclude(image='').count()
+
+            if current_images >= 7:
+                return JsonResponse({
+                    'error': 'Limit reached: You can only send up to 7 images.'
+                }, status=400)
+        # =========================================================     
 
         with transaction.atomic():
             message = Message(session=session, sender=user)
