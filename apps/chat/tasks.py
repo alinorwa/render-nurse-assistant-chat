@@ -193,7 +193,7 @@ def process_message_ai(message_id, override_text=None):
 
 @shared_task
 def check_epidemic_outbreak():
-    time_threshold = timezone.now() - timedelta(hours=1)
+    time_threshold = timezone.now() - timedelta(hours=24)
     
     epidemic_signatures = {
         "Gastrointestinal ": ["diaré", "oppkast", "kvalme", "magesmerter"],
