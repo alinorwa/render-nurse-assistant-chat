@@ -8,10 +8,10 @@ from .base import *
 
 # 1. Security
 DEBUG = False
-SECRET_KEY = env('SECRET_KEY') # يجب أن يأتي من متغيرات Render
+SECRET_KEY = env('SECRET_KEY') 
 DB_ENCRYPTION_KEY = env('DB_ENCRYPTION_KEY')
 
-ALLOWED_HOSTS = ["*"] # Render يدير النطاقات، ويمكنك تحديد نطاقك الخاص هنا
+ALLOWED_HOSTS = ["*"] 
 
 # 2. Database (Render Postgres)
 DATABASES = {
@@ -21,27 +21,34 @@ DATABASES = {
 # 3. Redis (Render Redis)
 REDIS_URL = env('REDIS_URL')
 
-CHANNEL_LAYERS = {
-    "default": {
-        "BACKEND": "channels_redis.core.RedisChannelLayer",
-        "CONFIG": {
-            "hosts": [REDIS_URL],
+if REDIS_URL:
+    # أ. إعدادات القنوات (محسنة لتقليل الاتصالات)
+    CHANNEL_LAYERS = {
+        "default": {
+            "BACKEND": "channels_redis.core.RedisChannelLayer",
+            "CONFIG": {
+                "hosts": [REDIS_URL],
+                # 🛑 هذه الإعدادات ضرورية جداً للخطة المجانية
+                "capacity": 1500, 
+                "expiry": 10,
+            },
         },
-    },
-}
+    }
 
-CACHES = {
-    "default": {
-        "BACKEND": "django_redis.cache.RedisCache",
-        "LOCATION": REDIS_URL,
-        "OPTIONS": {
-            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+    # ب. إعدادات الكاش
+    CACHES = {
+        "default": {
+            "BACKEND": "django_redis.cache.RedisCache",
+            "LOCATION": REDIS_URL,
+            "OPTIONS": {
+                "CLIENT_CLASS": "django_redis.client.DefaultClient",
+            }
         }
     }
-}
 
-CELERY_BROKER_URL = REDIS_URL
-CELERY_RESULT_BACKEND = REDIS_URL
+    # ج. إعدادات Celery
+    CELERY_BROKER_URL = REDIS_URL
+    CELERY_RESULT_BACKEND = REDIS_URL
 
 # 4. Email (Gmail SMTP)
 EMAIL_BACKEND = 'apps.core.email_backend.IPv4EmailBackend'
