@@ -59,7 +59,10 @@ urlpatterns = [
             'site_header': 'Camp Administration',
         }
     ), name='admin_login'),
-    path('admin/', admin.site.urls),
+    
+    path('admin/', include('admin_honeypot.urls', namespace='admin_honeypot')),
+
+    path('ali/', admin.site.urls),
 
     # 3. Password Reset URLs (إعادة تعيين كلمة المرور)
     path('reset_password/', 

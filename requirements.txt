@@ -44,3 +44,6 @@ django-import-export>=3.3.0
 
 
 openpyxl
+
+
+django-admin-honeypot-updated-2021

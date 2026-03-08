@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     'apps.accounts',
     'apps.chat',
     'apps.core',
+    'admin_honeypot'
 ]
 
 MIDDLEWARE = [
