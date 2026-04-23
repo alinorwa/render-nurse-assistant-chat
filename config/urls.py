@@ -18,9 +18,8 @@ class StaticViewSitemap(Sitemap):
     changefreq = 'daily'
 
     def items(self):
-        # ضع هنا أسماء الروابط (name='') للصفحات العامة التي تريد أرشفتها
-        # تأكد أن هذه الأسماء موجودة فعلاً في urls.py
-        return ['admin_login'] 
+        # نضع الروابط العامة فقط
+        return ['login'] 
 
     def location(self, item):
         return reverse(item)
@@ -29,13 +28,13 @@ sitemaps = {
     'static': StaticViewSitemap,
 }
 
-# دالة robots.txt بسيطة
 def robots_txt(request):
-    lines = [
+    lines =[
         "User-agent: *",
-        "Disallow: /chat/",      # لا تؤرشف الشات (خصوصية)
-        "Disallow: /admin/",     # لا تؤرشف لوحة التحكم
-        "Disallow: /dashboard/", # لا تؤرشف الداشبورد
+        "Disallow: /chat/",      
+        "Disallow: /admin/",     
+        "Disallow: /ali/",       
+        "Disallow: /dashboard/", 
         "Allow: /",
         f"Sitemap: https://{request.get_host()}/sitemap.xml",
     ]
@@ -45,26 +44,19 @@ def robots_txt(request):
 # 🔗 URL Patterns
 # ==============================================================================
 
-urlpatterns = [
+urlpatterns =[
     # 1. SEO URLs
     path('sitemap.xml', sitemap, {'sitemaps': sitemaps}, name='django.contrib.sitemaps.views.sitemap'),
     path('robots.txt', robots_txt),
 
-    # 2. Admin & Auth
-    path('admin/logout/', auth_views.LogoutView.as_view(next_page='/admin/'), name='admin_logout'),
-    path('admin/login/', auth_views.LoginView.as_view(
-        template_name='admin/login.html',
-        extra_context={
-            'site_title': 'Medical Support System',
-            'site_header': 'Camp Administration',
-        }
-    ), name='admin_login'),
-    
+    # 2. المصيدة (Honeypot) - لحماية النظام
     path('admin/', include('admin_honeypot.urls', namespace='admin_honeypot')),
 
+    # 🛑 3. لوحة التحكم الحقيقية (Unfold)
+    # تم حذف مسارات admin/login اليدوية، Unfold سيتولى الدخول والخروج بأمان تام
     path('ali/', admin.site.urls),
 
-    # 3. Password Reset URLs (إعادة تعيين كلمة المرور)
+    # 4. Password Reset URLs
     path('reset_password/', 
          auth_views.PasswordResetView.as_view(template_name="accounts/reset_password.html"), 
          name='password_reset'),
@@ -81,10 +73,10 @@ urlpatterns = [
          auth_views.PasswordResetCompleteView.as_view(template_name="accounts/reset_password_complete.html"), 
          name='password_reset_complete'),
 
-    # 4. Custom Dashboard
+    # 5. Custom Dashboard
     path('dashboard/', MedicalDashboardView.as_view(), name='custom_dashboard'),
     
-    # 5. Apps URLs
+    # 6. Apps URLs (دخول المرضى العادي)
     path('auth/', include('apps.accounts.urls')),
     path('chat/', include('apps.chat.urls')),
     path('', include('apps.core.urls')),
